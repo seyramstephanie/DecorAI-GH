@@ -75,6 +75,7 @@ export default function DecoratorDirectory() {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filterRow}
+        contentContainerStyle={{ paddingRight: 16 }}
       >
         {filters.map((f) => (
           <TouchableOpacity
@@ -149,6 +150,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
     borderWidth: 1,
     borderColor: "#ddd",
+    alignSelf: "flex-start",
   },
   chipActive: { backgroundColor: "#1B4332", borderColor: "#1B4332" },
   chipText: { color: "#666", fontSize: 13 },

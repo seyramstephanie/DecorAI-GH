@@ -1,12 +1,12 @@
 import { useState } from "react";
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 const shops = [
@@ -96,6 +96,7 @@ export default function ShopDirectory() {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filterRow}
+        contentContainerStyle={{ paddingRight: 16 }}
       >
         {categories.map((c) => (
           <TouchableOpacity
@@ -171,9 +172,10 @@ const styles = StyleSheet.create({
     marginRight: 8,
     borderWidth: 1,
     borderColor: "#ddd",
+    alignSelf: "flex-start",
   },
   chipActive: { backgroundColor: "#1B4332", borderColor: "#1B4332" },
-  chipText: { color: "#666", fontSize: 13 },
+  chipText: { color: "#666", fontSize: 13, fontFamily: "System" },
   chipTextActive: { color: "#fff" },
   card: {
     backgroundColor: "#fff",
