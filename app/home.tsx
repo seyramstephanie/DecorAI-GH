@@ -10,22 +10,24 @@ import { useRouter } from 'expo-router';
 import { Colors } from '../constants/colors';
 
 const quickActions = [
-  { emoji: '📷', label: 'Upload Space', sub: 'Photo analysis', bg: '#F0FDF4' },
-  { emoji: '🪄', label: 'Generate Design', sub: 'AI visualization', bg: '#FFF9E6' },
-  { emoji: '🎨', label: 'Find Decorators', sub: 'Local experts', bg: '#F0FDF4' },
-  { emoji: '🛋️', label: 'Browse Shops', sub: 'Furniture & Decor', bg: '#FFF9E6' },
+  { emoji: '📷', label: 'Upload Space', sub: 'Photo analysis', bg: '#F0FDF4', nav: '/generate' },
+  { emoji: '🪄', label: 'Generate Design', sub: 'AI visualization', bg: '#FFF9E6', nav: '/generate' },
+  { emoji: '🎨', label: 'Find Decorators', sub: 'Local experts', bg: '#F0FDF4', nav: '/decorators' },
+  { emoji: '🛋️', label: 'Browse Shops', sub: 'Furniture & Decor', bg: '#FFF9E6', nav: '/shops' },
+  { emoji: '📋', label: 'My Bookings', sub: 'Track status', bg: '#E8F5E9', nav: '/bookings' },
 ];
 
 const recentDesigns = [
   { label: 'Living Room v2', time: '2 hours ago', tag: 'SCANDI', bg: '#E8F5E9' },
   { label: 'Workspace Draft', time: 'Yesterday', tag: 'OFFICE', bg: '#E3F2FD' },
+  { label: 'Wedding Hall', time: '3 days ago', tag: 'LUXURY', bg: '#FFF9E6' },
 ];
 
 const inspirations = [
-  { label: 'Garden Wedding', emoji: '💐', bg: '#1B4332', size: 'large' },
-  { label: 'Earth Tone Dining', emoji: '🪴', bg: '#8B6914', size: 'small' },
-  { label: 'Afro-Modern', emoji: '🎋', bg: '#2D6A4F', size: 'small' },
-  { label: 'Poolside Lounge', emoji: '🌴', bg: '#1565C0', size: 'small' },
+  { label: 'Garden Wedding', emoji: '💐', bg: '#1B4332' },
+  { label: 'Earth Tone Dining', emoji: '🪴', bg: '#8B6914' },
+  { label: 'Afro-Modern', emoji: '🎋', bg: '#2D6A4F' },
+  { label: 'Poolside Lounge', emoji: '🌴', bg: '#1565C0' },
 ];
 
 export default function HomeScreen() {
@@ -37,7 +39,6 @@ export default function HomeScreen() {
         style={styles.container}
         showsVerticalScrollIndicator={false}
       >
-
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
@@ -83,11 +84,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={i}
               style={[styles.actionCard, { backgroundColor: action.bg }]}
-              onPress={() => {
-                if (i === 1) router.push('/generate');
-                if (i === 2) router.push('/decorators');
-                if (i === 3) router.push('/shops');
-              }}
+              onPress={() => router.push(action.nav as any)}
             >
               <Text style={styles.actionEmoji}>{action.emoji}</Text>
               <Text style={styles.actionLabel}>{action.label}</Text>
@@ -113,6 +110,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={i}
               style={[styles.designCard, { backgroundColor: d.bg }]}
+              onPress={() => router.push('/result')}
             >
               <View style={styles.designTag}>
                 <Text style={styles.designTagText}>{d.tag}</Text>
