@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import {
   View,
   Text,
@@ -16,11 +17,27 @@ const variants = [
   { label: 'Midnight Glam', emoji: '✨', bg: '#4A148C' },
 ];
 
-const items = [
-  { label: 'Gold Tall Centrepiece', sub: 'Used: 24 Pieces', emoji: '🏆' },
-  { label: 'Royal Blue Drapes', sub: 'Premium Velvet', emoji: '💙' },
-  { label: 'White Rose Bundles', sub: 'Fresh/Artificial Option', emoji: '🌹' },
-];
+const items = aiResult
+  ? aiResult
+      .split('\n')
+      .filter((line) => line.trim().startsWith('-') || line.trim().match(/^\d\./))
+      .slice(0, 6)
+      .map((line) => ({
+        label: line.replace(/^[-\d.]\s*/, '').trim(),
+        sub: 'Tap to find in local shops',
+        emoji: '✨',
+      }))
+  : [
+      { label: 'Gold Tall Centrepiece', sub: 'Used: 24 Pieces', emoji: '🏆' },
+      { label: 'Royal Blue Drapes', sub: 'Premium Velvet', emoji: '💙' },
+      { label: 'White Rose Bundles', sub: 'Fresh/Artificial Option', emoji: '🌹' },
+    ];
+
+const { aiResult, eventType, decorStyle } = useLocalSearchParams<{
+  aiResult: string;
+  eventType: string;
+  decorStyle: string;
+}>();
 
 export default function ResultScreen() {
   const router = useRouter();
