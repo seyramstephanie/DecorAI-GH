@@ -8,6 +8,7 @@
     "scheme": "decoraigh",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    
     "ios": {
       "supportsTablet": true
     },
@@ -43,6 +44,16 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "plugins": [
+  [
+    "expo-image-picker",
+    {
+      "cameraPermission": "DecorAI GH needs camera access to photograph your space for AI decoration previews.",
+      "microphonePermission": false,
+      "photosPermission": "DecorAI GH needs photo library access to upload your space photos."
     }
+  ]
+]
   }
 }
