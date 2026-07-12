@@ -1,57 +1,94 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
+  ActivityIndicator,
+  Image,
   SafeAreaView,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Colors } from '../constants/colors';
-
-const variants = [
-  { label: 'Modern Royal Wedding', emoji: '💍', bg: '#1A237E' },
-  { label: 'Garden Fresh', emoji: '🌿', bg: '#1B4332' },
-  { label: 'Midnight Glam', emoji: '✨', bg: '#4A148C' },
-];
-
-const items = aiResult
-  ? aiResult
-      .split('\n')
-      .filter((line) => line.trim().startsWith('-') || line.trim().match(/^\d\./))
-      .slice(0, 6)
-      .map((line) => ({
-        label: line.replace(/^[-\d.]\s*/, '').trim(),
-        sub: 'Tap to find in local shops',
-        emoji: '✨',
-      }))
-  : [
-      { label: 'Gold Tall Centrepiece', sub: 'Used: 24 Pieces', emoji: '🏆' },
-      { label: 'Royal Blue Drapes', sub: 'Premium Velvet', emoji: '💙' },
-      { label: 'White Rose Bundles', sub: 'Fresh/Artificial Option', emoji: '🌹' },
-    ];
-
-const { aiResult, eventType, decorStyle } = useLocalSearchParams<{
-  aiResult: string;
-  eventType: string;
-  decorStyle: string;
-}>();
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { API } from "../constants/api";
+import { Colors } from "../constants/colors";
 
 export default function ResultScreen() {
   const router = useRouter();
-  const [variant, setVariant] = useState(0);
+  const { predictionId, eventType, decorStyle } = useLocalSearchParams<{
+    predictionId: string;
+    eventType: string;
+    decorStyle: string;
+  }>();
+
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [items, setItems] = useState<string[]>([]);
+  const [status, setStatus] = useState("processing");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!predictionId) return;
+    pollResult();
+  }, [predictionId]);
+
+  const pollResult = async () => {
+    try {
+      const response = await fetch(API.getAiResult(predictionId as string));
+      const data = await response.json();
+
+      if (data.message === "succeeded" && data.decorationPreview) {
+        setPreviewUrl(data.decorationPreview);
+        setItems(data.identifiedItems || []);
+        setStatus("succeeded");
+        setLoading(false);
+      } else if (
+        data.message === "failed" ||
+        (data.message && data.message.startsWith("Error"))
+      ) {
+        setStatus("failed");
+        setLoading(false);
+      } else {
+        setTimeout(pollResult, 3000);
+      }
+    } catch (e) {
+      setStatus("failed");
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Generating your design…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (status === "failed" || !previewUrl) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>
+            Something went wrong generating your design.
+          </Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => router.back()}
+          >
+            <Text style={styles.retryBtnText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Hero preview */}
-        <View style={[styles.hero, { backgroundColor: variants[variant].bg }]}>
-          {/* Top buttons */}
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.hero}>
           <View style={styles.heroTop}>
             <TouchableOpacity
               style={styles.heroBtn}
@@ -59,113 +96,50 @@ export default function ResultScreen() {
             >
               <Text style={styles.heroBtnText}>←</Text>
             </TouchableOpacity>
-            <View style={styles.heroTopRight}>
-              <TouchableOpacity style={styles.heroBtn}>
-                <Text style={styles.heroBtnText}>↑</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.heroBtn, styles.heartBtn]}>
-                <Text style={styles.heroBtnText}>♥</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-
-          {/* Preview */}
-          <View style={styles.heroContent}>
-            <Text style={styles.heroEmoji}>{variants[variant].emoji}</Text>
-            <Text style={styles.heroTitle}>{variants[variant].label}</Text>
-            <Text style={styles.heroSub}>Variant {variant + 1} of 3</Text>
-          </View>
-
-          {/* Dots */}
-          <View style={styles.heroDots}>
-            {variants.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.heroDot,
-                  i === variant && styles.heroDotActive,
-                ]}
-              />
-            ))}
-          </View>
+          <Image
+            source={{ uri: previewUrl }}
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
         </View>
 
         <View style={styles.body}>
-          {/* Design Variants */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>DESIGN VARIANTS</Text>
-            <TouchableOpacity>
-              <Text style={styles.regenerate}>REGENERATE</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.variantsRow}
-          >
-            {variants.map((v, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[
-                  styles.variantThumb,
-                  { backgroundColor: v.bg },
-                  i === variant && styles.variantThumbActive,
-                ]}
-                onPress={() => setVariant(i)}
-              >
-                <Text style={styles.variantThumbEmoji}>{v.emoji}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <Text style={styles.designTitle}>
+            {eventType} · {decorStyle}
+          </Text>
 
-          {/* Action buttons */}
-          <View style={styles.actionsRow}>
-            {[
-              { emoji: '💾', label: 'Save' },
-              { emoji: '↗️', label: 'Share' },
-              { emoji: '📤', label: 'Send To' },
-            ].map((a) => (
-              <TouchableOpacity key={a.label} style={styles.actionBtn}>
-                <Text style={styles.actionBtnEmoji}>{a.emoji}</Text>
-                <Text style={styles.actionBtnLabel}>{a.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Items */}
           <Text style={styles.itemsTitle}>ITEMS IN THIS DESIGN</Text>
           <View style={styles.itemsList}>
-            {items.map((item, i) => (
-              <TouchableOpacity key={i} style={styles.itemRow}>
-                <View style={styles.itemIcon}>
-                  <Text style={styles.itemEmoji}>{item.emoji}</Text>
+            {items.length === 0 ? (
+              <Text style={styles.noItems}>No items identified yet</Text>
+            ) : (
+              items.map((item, i) => (
+                <View key={i} style={styles.itemRow}>
+                  <View style={styles.itemIcon}>
+                    <Text style={styles.itemEmoji}>✨</Text>
+                  </View>
+                  <Text style={styles.itemLabel}>{item}</Text>
                 </View>
-                <View style={styles.itemText}>
-                  <Text style={styles.itemLabel}>{item.label}</Text>
-                  <Text style={styles.itemSub}>{item.sub}</Text>
-                </View>
-                <Text style={styles.itemArrow}>›</Text>
-              </TouchableOpacity>
-            ))}
+              ))
+            )}
           </View>
 
-          {/* Bottom buttons */}
           <View style={styles.bottomBtns}>
             <TouchableOpacity
               style={styles.outlineBtn}
-              onPress={() => router.push('/shops')}
+              onPress={() => router.push("/shops")}
             >
               <Text style={styles.outlineBtnText}>🏪 Find Shops</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.solidBtn}
-              onPress={() => router.push('/decorators')}
+              onPress={() => router.push("/decorators")}
             >
               <Text style={styles.solidBtnText}>📋 Book Decorator</Text>
             </TouchableOpacity>
           </View>
         </View>
-
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
@@ -173,146 +147,45 @@ export default function ResultScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  safeArea: { flex: 1, backgroundColor: Colors.bg },
+  container: { flex: 1 },
+  loadingContainer: {
     flex: 1,
-    backgroundColor: Colors.bg,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    padding: 32,
   },
-  container: {
-    flex: 1,
+  loadingText: { fontSize: 15, color: Colors.textMuted, textAlign: "center" },
+  retryBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
   },
-  hero: {
-    height: 320,
-    paddingTop: 16,
-    paddingHorizontal: 20,
-  },
-  heroTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  heroTopRight: {
-    flexDirection: 'row',
-    gap: 10,
-  },
+  retryBtnText: { color: Colors.white, fontWeight: "700" },
+  hero: { height: 320 },
+  heroTop: { position: "absolute", top: 16, left: 20, zIndex: 10 },
   heroBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.white + 'CC',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: Colors.white + "CC",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  heartBtn: {
-    backgroundColor: '#E53935CC',
-  },
-  heroBtnText: {
+  heroBtnText: { fontSize: 18, fontWeight: "600" },
+  heroImage: { width: "100%", height: "100%" },
+  body: { padding: 20 },
+  designTitle: {
     fontSize: 18,
+    fontWeight: "800",
     color: Colors.text,
-    fontWeight: '600',
-  },
-  heroContent: {
-    flex: 1,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-    paddingBottom: 16,
-  },
-  heroEmoji: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  heroTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.white,
-    marginBottom: 4,
-  },
-  heroSub: {
-    fontSize: 13,
-    color: Colors.white + 'BB',
-  },
-  heroDots: {
-    flexDirection: 'row',
-    gap: 6,
-    justifyContent: 'center',
-    paddingBottom: 16,
-  },
-  heroDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.white + '55',
-  },
-  heroDotActive: {
-    width: 20,
-    backgroundColor: Colors.white,
-  },
-  body: {
-    padding: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMuted,
-    letterSpacing: 0.8,
-  },
-  regenerate: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
-    letterSpacing: 0.5,
-  },
-  variantsRow: {
     marginBottom: 20,
-  },
-  variantThumb: {
-    width: 90,
-    height: 70,
-    borderRadius: 12,
-    marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  variantThumbActive: {
-    borderColor: Colors.primary,
-  },
-  variantThumbEmoji: {
-    fontSize: 28,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  actionBtn: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  actionBtnEmoji: {
-    fontSize: 24,
-  },
-  actionBtnLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.text,
   },
   itemsTitle: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.textMuted,
     letterSpacing: 0.8,
     marginBottom: 14,
@@ -320,80 +193,44 @@ const styles = StyleSheet.create({
   itemsList: {
     backgroundColor: Colors.white,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
   },
+  noItems: { padding: 16, color: Colors.textMuted, fontSize: 13 },
   itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
     gap: 14,
   },
   itemIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     backgroundColor: Colors.green100,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  itemEmoji: {
-    fontSize: 22,
-  },
-  itemText: {
-    flex: 1,
-  },
-  itemLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 3,
-  },
-  itemSub: {
-    fontSize: 12,
-    color: Colors.textMuted,
-  },
-  itemArrow: {
-    fontSize: 20,
-    color: Colors.textLight,
-  },
-  bottomBtns: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+  itemEmoji: { fontSize: 18 },
+  itemLabel: { fontSize: 14, fontWeight: "600", color: Colors.text, flex: 1 },
+  bottomBtns: { flexDirection: "row", gap: 12 },
   outlineBtn: {
     flex: 1,
     borderWidth: 1.5,
     borderColor: Colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  outlineBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
+  outlineBtnText: { fontSize: 14, fontWeight: "700", color: Colors.primary },
   solidBtn: {
     flex: 1,
     backgroundColor: Colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
-    alignItems: 'center',
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    alignItems: "center",
   },
-  solidBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.white,
-  },
+  solidBtnText: { fontSize: 14, fontWeight: "700", color: Colors.white },
 });

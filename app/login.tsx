@@ -1,33 +1,59 @@
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Colors } from '../constants/colors';
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { API, setToken } from "../constants/api";
+import { Colors } from "../constants/colors";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    router.replace('/home');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please enter your email and password");
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(API.login, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setToken(data.token);
+        router.replace("/home");
+      } else {
+        Alert.alert("Login Failed", data.message || "Invalid credentials");
+      }
+    } catch (e) {
+      Alert.alert("Error", "Could not connect to server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           contentContainerStyle={styles.container}
@@ -84,17 +110,27 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                >
                   <Text style={styles.inputIcon}>
-                    {showPassword ? '🙈' : '👁️'}
+                    {showPassword ? "🙈" : "👁️"}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Login button */}
-            <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
-              <Text style={styles.loginBtnText}>Login</Text>
+            <TouchableOpacity
+              style={styles.loginBtn}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <Text style={styles.loginBtnText}>Login</Text>
+              )}
             </TouchableOpacity>
 
             {/* Divider */}
@@ -111,7 +147,7 @@ export default function LoginScreen() {
                 <Text style={styles.socialText}>Google</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.socialBtn}>
-                <Text style={[styles.socialIcon, { color: '#1877F2' }]}>f</Text>
+                <Text style={[styles.socialIcon, { color: "#1877F2" }]}>f</Text>
                 <Text style={styles.socialText}>Facebook</Text>
               </TouchableOpacity>
             </View>
@@ -119,10 +155,10 @@ export default function LoginScreen() {
             {/* Sign up link */}
             <TouchableOpacity
               style={styles.signupRow}
-              onPress={() => router.push('/register')}
+              onPress={() => router.push("/register")}
             >
               <Text style={styles.signupText}>
-                Don't have an account?{' '}
+                Don't have an account?{" "}
                 <Text style={styles.signupLink}>Sign Up</Text>
               </Text>
             </TouchableOpacity>
@@ -143,10 +179,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 40,
     paddingBottom: 40,
-    alignItems: 'center',
+    alignItems: "center",
   },
   logoArea: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 32,
   },
   logoIcon: {
@@ -154,8 +190,8 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 20,
     backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 12,
     shadowColor: Colors.primary,
     shadowOpacity: 0.3,
@@ -167,30 +203,30 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.primary,
   },
   card: {
-    width: '100%',
+    width: "100%",
     backgroundColor: Colors.white,
     borderRadius: 24,
     padding: 28,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 16,
     elevation: 4,
   },
   cardTitle: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.text,
     marginBottom: 6,
-    textAlign: 'center',
+    textAlign: "center",
   },
   cardSub: {
     fontSize: 14,
     color: Colors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 28,
   },
   fieldGroup: {
@@ -198,24 +234,24 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
     marginBottom: 8,
   },
   labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   forgotText: {
     fontSize: 13,
     color: Colors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.bg,
     borderRadius: 12,
     borderWidth: 1,
@@ -237,7 +273,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     borderRadius: 14,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
     marginBottom: 24,
     shadowColor: Colors.primary,
@@ -248,11 +284,11 @@ const styles = StyleSheet.create({
   loginBtnText: {
     color: Colors.white,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
     gap: 10,
   },
@@ -264,19 +300,19 @@ const styles = StyleSheet.create({
   dividerText: {
     fontSize: 11,
     color: Colors.textLight,
-    fontWeight: '600',
+    fontWeight: "600",
     letterSpacing: 0.5,
   },
   socialRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginBottom: 24,
   },
   socialBtn: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     backgroundColor: Colors.bg,
     borderRadius: 12,
@@ -286,16 +322,16 @@ const styles = StyleSheet.create({
   },
   socialIcon: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#DB4437',
+    fontWeight: "800",
+    color: "#DB4437",
   },
   socialText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.text,
   },
   signupRow: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   signupText: {
     fontSize: 14,
@@ -303,6 +339,6 @@ const styles = StyleSheet.create({
   },
   signupLink: {
     color: Colors.primary,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

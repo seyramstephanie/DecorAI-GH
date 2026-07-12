@@ -1,45 +1,48 @@
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   SafeAreaView,
   ScrollView,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Colors } from '../constants/colors';
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Colors } from "../constants/colors";
 
 const roles = [
   {
-    key: 'client',
-    title: 'Client',
-    subtitle: 'I want to decorate my space',
-    emoji: '🛋️',
-    bg: '#FFF9E6',
+    key: "client",
+    title: "Client",
+    subtitle: "I want to decorate my space",
+    emoji: "🛋️",
+    bg: "#FFF9E6",
   },
   {
-    key: 'decorator',
-    title: 'Decorator',
-    subtitle: 'I offer decoration services',
-    emoji: '🎨',
-    bg: '#F0FDF4',
+    key: "decorator",
+    title: "Decorator",
+    subtitle: "I offer decoration services",
+    emoji: "🎨",
+    bg: "#F0FDF4",
   },
   {
-    key: 'shop',
-    title: 'Shop Owner',
-    subtitle: 'I sell decoration items',
-    emoji: '🏪',
-    bg: '#F0FDF4',
+    key: "shop",
+    title: "Shop Owner",
+    subtitle: "I sell decoration items",
+    emoji: "🏪",
+    bg: "#F0FDF4",
   },
 ];
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState('client');
+  const [selectedRole, setSelectedRole] = useState("client");
 
   const handleContinue = () => {
-    router.push('/create-account');
+    router.push({
+      pathname: "/create-account",
+      params: { role: selectedRole.toUpperCase() },
+    });
   };
 
   return (
@@ -49,10 +52,7 @@ export default function RegisterScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Back button */}
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
 
@@ -67,10 +67,7 @@ export default function RegisterScreen() {
             return (
               <TouchableOpacity
                 key={role.key}
-                style={[
-                  styles.roleCard,
-                  isSelected && styles.roleCardActive,
-                ]}
+                style={[styles.roleCard, isSelected && styles.roleCardActive]}
                 onPress={() => setSelectedRole(role.key)}
               >
                 {/* Icon */}
@@ -80,23 +77,20 @@ export default function RegisterScreen() {
 
                 {/* Text */}
                 <View style={styles.roleText}>
-                  <Text style={[
-                    styles.roleTitle,
-                    isSelected && styles.roleTitleActive,
-                  ]}>
+                  <Text
+                    style={[
+                      styles.roleTitle,
+                      isSelected && styles.roleTitleActive,
+                    ]}
+                  >
                     {role.title}
                   </Text>
                   <Text style={styles.roleSub}>{role.subtitle}</Text>
                 </View>
 
                 {/* Radio */}
-                <View style={[
-                  styles.radio,
-                  isSelected && styles.radioActive,
-                ]}>
-                  {isSelected && (
-                    <Text style={styles.radioCheck}>✓</Text>
-                  )}
+                <View style={[styles.radio, isSelected && styles.radioActive]}>
+                  {isSelected && <Text style={styles.radioCheck}>✓</Text>}
                 </View>
               </TouchableOpacity>
             );
@@ -104,21 +98,16 @@ export default function RegisterScreen() {
         </View>
 
         {/* Continue button */}
-        <TouchableOpacity
-          style={styles.continueBtn}
-          onPress={handleContinue}
-        >
+        <TouchableOpacity style={styles.continueBtn} onPress={handleContinue}>
           <Text style={styles.continueBtnText}>Continue</Text>
         </TouchableOpacity>
 
         {/* Support link */}
         <TouchableOpacity style={styles.supportRow}>
           <Text style={styles.supportText}>
-            Need help?{' '}
-            <Text style={styles.supportLink}>Contact Support</Text>
+            Need help? <Text style={styles.supportLink}>Contact Support</Text>
           </Text>
         </TouchableOpacity>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -140,10 +129,10 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 28,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
@@ -154,7 +143,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.text,
     marginBottom: 8,
   },
@@ -168,14 +157,14 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   roleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: Colors.white,
     borderRadius: 16,
     padding: 18,
     borderWidth: 2,
     borderColor: Colors.border,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.04,
     shadowRadius: 8,
     elevation: 2,
@@ -193,8 +182,8 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   roleEmoji: {
     fontSize: 26,
@@ -204,7 +193,7 @@ const styles = StyleSheet.create({
   },
   roleTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.text,
     marginBottom: 4,
   },
@@ -222,8 +211,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: Colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   radioActive: {
     backgroundColor: Colors.accent,
@@ -231,14 +220,14 @@ const styles = StyleSheet.create({
   },
   radioCheck: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: "800",
     color: Colors.primary,
   },
   continueBtn: {
     backgroundColor: Colors.primary,
     borderRadius: 16,
     paddingVertical: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
     shadowColor: Colors.primary,
     shadowOpacity: 0.3,
@@ -248,10 +237,10 @@ const styles = StyleSheet.create({
   continueBtnText: {
     color: Colors.white,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   supportRow: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   supportText: {
     fontSize: 14,
@@ -259,6 +248,6 @@ const styles = StyleSheet.create({
   },
   supportLink: {
     color: Colors.primary,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });
