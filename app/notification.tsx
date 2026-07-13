@@ -1,214 +1,88 @@
-import { useState } from "react";
-import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { EmptyState, ScreenHeader } from '../components/ui/ScreenHeader';
+import { Radii, Shadow, Type } from '../constants/theme';
+import { api, Notification } from '../lib/api';
+import { session } from '../lib/session';
+import { Palette, useColors } from '../lib/theme';
 
-const notifs = [
-  {
-    id: "1",
-    type: "booking",
-    title: "Booking Confirmed!",
-    message:
-      "Akosua Mensah confirmed your wedding decoration booking for 25 Dec 2026.",
-    time: "2 mins ago",
-    read: false,
-    emoji: "✅",
-  },
-  {
-    id: "2",
-    type: "shop",
-    title: "Shop Alert",
-    message:
-      "Kumasi Floral Hub has fresh flowers matching your AI design in stock!",
-    time: "15 mins ago",
-    read: false,
-    emoji: "🏪",
-  },
-  {
-    id: "3",
-    type: "message",
-    title: "New Message",
-    message: "Akosua Mensah sent you a message about your decoration brief.",
-    time: "1 hour ago",
-    read: false,
-    emoji: "💬",
-  },
-  {
-    id: "4",
-    type: "reminder",
-    title: "Event Reminder",
-    message:
-      "Your wedding decoration is in 48 hours! Contact your decorator to confirm final details.",
-    time: "2 hours ago",
-    read: true,
-    emoji: "⏰",
-  },
-  {
-    id: "5",
-    type: "inspiration",
-    title: "Weekly Inspiration",
-    message:
-      "New Ghanaian wedding decoration styles are available. Check out this week's top designs!",
-    time: "1 day ago",
-    read: true,
-    emoji: "✨",
-  },
-  {
-    id: "6",
-    type: "shop",
-    title: "Stock Update",
-    message:
-      "Bright Lights Rental now has LED chandeliers you shortlisted back in stock!",
-    time: "2 days ago",
-    read: true,
-    emoji: "💡",
-  },
-];
+// FR-26..30 — radius alerts, brief alerts, booking updates, weekly digests, stock alerts
+const ICONS: Record<Notification['type'], any> = {
+  radius: 'megaphone-outline', brief: 'document-text-outline', booking: 'calendar-outline',
+  digest: 'sparkles-outline', stock: 'cube-outline',
+};
 
-export default function NotificationsScreen() {
-  const [notifications, setNotifications] = useState(notifs);
-  const [filter, setFilter] = useState("All");
-  const filters = ["All", "Bookings", "Shops", "Messages"];
+const timeAgo = (iso: string) => {
+  const mins = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+};
 
-  const markAllRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+export default function Notifications() {
+  const C = useColors();
+  const styles = useMemo(() => makeStyles(C), [C]);
+  const [rows, setRows] = useState<Notification[]>([]);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    api.get<Notification[]>(`/notifications?userId=${session.user?.id ?? 'guest'}`)
+      .then(setRows).catch(() => setError(true));
+  }, []);
+
+  const markRead = (n: Notification) => {
+    if (n.read) return;
+    setRows((r) => r.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+    api.patch(`/notifications/${n.id}/read`, {}).catch(() => {});
   };
-
-  const markRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
-  };
-
-  const filtered = notifications.filter((n) => {
-    if (filter === "All") return true;
-    if (filter === "Bookings")
-      return n.type === "booking" || n.type === "reminder";
-    if (filter === "Shops") return n.type === "shop";
-    if (filter === "Messages") return n.type === "message";
-    return true;
-  });
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.header}>Notifications</Text>
-          {unreadCount > 0 && (
-            <Text style={styles.unreadCount}>{unreadCount} unread</Text>
-          )}
-        </View>
-        <TouchableOpacity onPress={markAllRead}>
-          <Text style={styles.markAll}>Mark all read</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterRow}
-        contentContainerStyle={{ paddingRight: 16 }}
-      >
-        {filters.map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[styles.chip, filter === f && styles.chipActive]}
-            onPress={() => setFilter(f)}
-          >
-            <Text
-              style={[styles.chipText, filter === f && styles.chipTextActive]}
-            >
-              {f}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {filtered.map((n) => (
-          <TouchableOpacity
-            key={n.id}
-            style={[styles.card, !n.read && styles.cardUnread]}
-            onPress={() => markRead(n.id)}
-          >
-            <View style={styles.emojiBox}>
-              <Text style={styles.emoji}>{n.emoji}</Text>
-            </View>
-            <View style={styles.info}>
-              <View style={styles.row}>
-                <Text style={styles.title}>{n.title}</Text>
-                {!n.read && <View style={styles.dot} />}
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      <ScreenHeader title="Notifications" />
+      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        {error && <EmptyState icon="cloud-offline-outline" title="Backend offline" body="Start it with: npm run server." />}
+        {!error && rows.length === 0 && (
+          <EmptyState icon="notifications-outline" title="All caught up"
+            body="Radius alerts, booking updates and weekly inspiration will appear here." />
+        )}
+        {rows.map((n, i) => (
+          <Animated.View key={n.id} entering={FadeInDown.delay(i * 50).duration(350)}>
+            <Pressable onPress={() => markRead(n)} style={[styles.card, Shadow.card, !n.read && styles.unread]}>
+              <View style={styles.icon}>
+                <Ionicons name={ICONS[n.type] ?? 'notifications-outline'} size={19} color={C.primary} />
               </View>
-              <Text style={styles.message}>{n.message}</Text>
-              <Text style={styles.time}>{n.time}</Text>
-            </View>
-          </TouchableOpacity>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={[styles.title, !n.read && { fontWeight: '700' }]}>{n.title}</Text>
+                <Text style={styles.msg}>{n.body}</Text>
+                <Text style={styles.time}>{timeAgo(n.at)}</Text>
+              </View>
+              {!n.read && <View style={styles.dot} />}
+            </Pressable>
+          </Animated.View>
         ))}
-        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5", padding: 16 },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
-  },
-  header: { fontSize: 24, fontWeight: "bold", color: "#1B4332" },
-  unreadCount: { fontSize: 12, color: "#666", marginTop: 2 },
-  markAll: { fontSize: 13, color: "#1B4332", fontWeight: "600", marginTop: 6 },
-  filterRow: { marginBottom: 16 },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#fff",
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    alignSelf: "flex-start",
-  },
-  chipActive: { backgroundColor: "#1B4332", borderColor: "#1B4332" },
-  chipText: { color: "#666", fontSize: 13 },
-  chipTextActive: { color: "#fff" },
+const makeStyles = (C: Palette) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: C.bg },
+  body: { paddingHorizontal: 20, paddingBottom: 24, gap: 10 },
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    flexDirection: "row",
-    gap: 12,
-    elevation: 1,
+    flexDirection: 'row', gap: 12, backgroundColor: C.card, borderRadius: Radii.md,
+    padding: 14, alignItems: 'flex-start',
   },
-  cardUnread: { borderLeftWidth: 4, borderLeftColor: "#1B4332" },
-  emojiBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#E8F5E9",
-    justifyContent: "center",
-    alignItems: "center",
+  unread: { borderWidth: 1, borderColor: C.accentSoft },
+  icon: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: C.accentSoft,
+    alignItems: 'center', justifyContent: 'center',
   },
-  emoji: { fontSize: 22 },
-  info: { flex: 1 },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  title: { fontSize: 14, fontWeight: "bold", color: "#1B4332", flex: 1 },
-  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#1B4332" },
-  message: { fontSize: 13, color: "#555", marginTop: 4, lineHeight: 18 },
-  time: { fontSize: 11, color: "#999", marginTop: 6 },
+  title: { ...Type.body, fontWeight: '600', color: C.text },
+  msg: { ...Type.caption, color: C.textMuted, lineHeight: 17 },
+  time: { fontSize: 10, color: C.textLight, marginTop: 2 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.accent, marginTop: 6 },
 });

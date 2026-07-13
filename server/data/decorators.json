@@ -1,0 +1,91 @@
+[
+  {
+    "id": "d1",
+    "name": "Akosua Mensah",
+    "businessName": "Royal Touch Decor",
+    "location": "Kumasi",
+    "rating": 4.9,
+    "reviews": 87,
+    "specialisations": [
+      "Wedding",
+      "Church Anniversary"
+    ],
+    "priceRange": "GH₵2,000–8,000",
+    "verified": true,
+    "phone": "+233 24 555 1122",
+    "bio": "Award-winning wedding and church decorator serving Ashanti Region for 8 years.",
+    "portfolio": [
+      "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80",
+      "https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=800&q=80",
+      "https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=800&q=80"
+    ],
+    "lat": 6.6931,
+    "lng": -1.6244
+  },
+  {
+    "id": "d2",
+    "name": "Kofi Asante",
+    "businessName": "Asante Events GH",
+    "location": "Accra",
+    "rating": 4.7,
+    "reviews": 132,
+    "specialisations": [
+      "Corporate",
+      "Birthday"
+    ],
+    "priceRange": "GH₵1,500–6,000",
+    "verified": true,
+    "phone": "+233 20 777 3344",
+    "bio": "Corporate launches, birthdays and premium private events across Greater Accra.",
+    "portfolio": [
+      "https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&q=80",
+      "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&q=80"
+    ],
+    "lat": 5.6037,
+    "lng": -0.187
+  },
+  {
+    "id": "d3",
+    "name": "Efua Boateng",
+    "businessName": "Serene Spaces",
+    "location": "Kumasi",
+    "rating": 4.8,
+    "reviews": 54,
+    "specialisations": [
+      "Home Interior",
+      "Luxury"
+    ],
+    "priceRange": "GH₵3,000–15,000",
+    "verified": true,
+    "phone": "+233 54 222 9900",
+    "bio": "Interior styling for homes and offices — modern Ghanaian contemporary is my signature.",
+    "portfolio": [
+      "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80",
+      "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800&q=80"
+    ],
+    "lat": 6.7085,
+    "lng": -1.6305
+  },
+  {
+    "id": "d4",
+    "name": "Randa Wuni",
+    "businessName": "Northern Elegance",
+    "location": "Tamale",
+    "rating": 4.6,
+    "reviews": 29,
+    "specialisations": [
+      "Funeral",
+      "Traditional",
+      "Wedding"
+    ],
+    "priceRange": "GH₵1,000–5,000",
+    "verified": true,
+    "phone": "+233 26 888 4455",
+    "bio": "Traditional and modern event decoration across the Northern Region.",
+    "portfolio": [
+      "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80"
+    ],
+    "lat": 9.4008,
+    "lng": -0.8393
+  }
+]

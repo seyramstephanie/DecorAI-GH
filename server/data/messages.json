@@ -1,0 +1,18 @@
+[
+  {
+    "id": "rhjjcuab",
+    "bookingId": "dm_d1_u1",
+    "at": "2026-07-13T06:45:44.699Z",
+    "from": "u1",
+    "fromName": "Seyram Dede",
+    "text": "Hello, are you free on the 24th?"
+  },
+  {
+    "id": "5kavkdtg",
+    "bookingId": "dm_d1_u1",
+    "at": "2026-07-13T06:45:44.882Z",
+    "from": "d1-user",
+    "fromName": "Akosua Mensah",
+    "text": "Yes! Send me the venue details."
+  }
+]

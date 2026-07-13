@@ -1,35 +1,27 @@
-import { Stack } from "expo-router";
-import { StatusBar } from "expo-status-bar";
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React, { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { hydrateStore, useStore } from '../lib/store';
+import { useColors } from '../lib/theme';
 
 export default function RootLayout() {
+  const C = useColors();
+  const { prefs } = useStore();
+  useEffect(() => { void hydrateStore(); }, []);
   return (
-    <>
-      <StatusBar style="dark" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: "#F8F9FA" },
-          animation: "slide_from_right",
-        }}
-      >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="register" />
-        <Stack.Screen name="create-account" />
-        <Stack.Screen name="otp" />
-        <Stack.Screen name="home" />
-        <Stack.Screen name="generate" />
-        <Stack.Screen name="result" />
-        <Stack.Screen name="shops" />
-        <Stack.Screen name="decorators" />
-        <Stack.Screen name="bookings" />
-        <Stack.Screen name="chat" />
-        <Stack.Screen name="profile" />
-        <Stack.Screen name="account-settings" />
-        <Stack.Screen name="design-brief" />
-        <Stack.Screen name="radius-alert" />
-      </Stack>
-    </>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
+        <StatusBar style={prefs.darkMode ? 'light' : 'dark'} />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: C.bg },
+            animation: 'slide_from_right',
+          }}
+        />
+      </BottomSheetModalProvider>
+    </GestureHandlerRootView>
   );
 }

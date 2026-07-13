@@ -1,348 +1,265 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  Image,
-} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Colors } from '../constants/colors';
+import React, { useMemo, useRef, useState } from 'react';
+import { Dimensions, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  interpolate, useAnimatedRef, useAnimatedStyle, useScrollViewOffset,
+} from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Shadow, Type } from '../constants/theme';
+import { Palette, useColors } from '../lib/theme';
 
-const { width, height } = Dimensions.get('window');
+// Onboarding per UI reference: logo top, hero graphic, bold two-line headline,
+// muted subtitle, dash page-dots, one big pill button — in our system colors.
+const { width } = Dimensions.get('window');
 
-const slides = [
+const ROOM_1 = 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=900&q=80';
+const ROOM_2 = 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=900&q=80';
+const FACE_1 = 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=200&q=80';
+const FACE_2 = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80';
+const FACE_3 = 'https://images.unsplash.com/photo-1531384441138-2736e62e0919?w=200&q=80';
+
+const SLIDES = [
   {
-    id: 1,
-    title: 'Visualise Your Dream Space',
-    body: 'AI-powered decoration previews for your home or event.',
-    tag: 'TRANSFORM',
-    bgColor: '#1B4332',
-    emoji: '🛋️',
+    hero: 'cards' as const,
+    title: 'See your space\ntransformed in seconds',
+    body: 'Snap your room, hall or venue and watch AI redecorate it — before you spend a single cedi.',
   },
   {
-    id: 2,
-    title: 'Source Items Instantly',
-    body: 'Find and buy decoration items from local shops in Ghana.',
-    tag: 'INSTANT BUY',
-    bgColor: '#2D6A4F',
-    emoji: '🛍️',
+    hero: 'decorators' as const,
+    title: 'Book trusted\nlocal decorators',
+    body: 'Verified decorators receive your AI design as a brief, with ratings and reviews you can trust.',
   },
   {
-    id: 3,
-    title: 'Find Decorators Near You',
-    body: 'Connect with top-rated local decorators for your special events.',
-    tag: 'TOP RATED EXPERTS',
-    bgColor: '#1B4332',
-    emoji: '🎨',
-  },
-  {
-    id: 4,
-    title: 'Ready to Transform Your Space?',
-    body: 'Join DecorAI GH today and bring your vision to life with the best local expertise.',
-    tag: null,
-    bgColor: '#F8F9FA',
-    emoji: '✨',
-    isLast: true,
+    hero: 'orbit' as const,
+    title: 'Source every item\nfrom shops near you',
+    body: 'Furniture, fabrics and décor — everything in your design, matched to Ghanaian shops around you.',
   },
 ];
 
-export default function OnboardingScreen() {
+export default function Onboarding() {
+  const C = useColors();
+  const styles = useMemo(() => makeStyles(C), [C]);
   const router = useRouter();
-  const [current, setCurrent] = useState(0);
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const offset = useScrollViewOffset(scrollRef);
+  const [page, setPage] = useState(0);
+  const pageRef = useRef(0);
 
-  const slide = slides[current];
+  // Skip lands on the auth page — signing in (or up) is still required
+  const skip = () => router.replace('/create-account');
 
-  const handleNext = () => {
-    if (current < slides.length - 1) {
-      setCurrent(current + 1);
-    } else {
-      router.replace('/login');
-    }
+  const next = () => {
+    if (pageRef.current >= SLIDES.length - 1) return router.replace('/create-account');
+    scrollRef.current?.scrollTo({ x: width * (pageRef.current + 1), animated: true });
   };
-
-  const handleSkip = () => {
-    router.replace('/login');
-  };
-
-  // Last slide — special layout
-  if (slide.isLast) return (
-    <View style={styles.container}>
-      {/* Image area */}
-      <View style={[styles.imageArea, { backgroundColor: '#E8F5E9' }]}>
-        <View style={styles.mockImageLast}>
-          <Text style={styles.mockEmoji}>🏠</Text>
-          <View style={styles.tagBadge}>
-            <View style={[styles.tagDot, { backgroundColor: Colors.success }]} />
-            <Text style={styles.tagText}>Your vision, realized.</Text>
-          </View>
-          <Text style={styles.mockSubTag}>Join thousands of happy users</Text>
-        </View>
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        <Text style={styles.titleLarge}>{slide.title}</Text>
-        <Text style={styles.body}>{slide.body}</Text>
-
-        {/* Dots */}
-        <View style={styles.dotsRow}>
-          {slides.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                i === current ? styles.dotActive : styles.dotInactive,
-              ]}
-            />
-          ))}
-        </View>
-
-        <TouchableOpacity style={styles.btnPrimary} onPress={handleNext}>
-          <Text style={styles.btnPrimaryText}>Get Started →</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => router.push('/login')}>
-          <Text style={styles.alreadyText}>
-            Already have an account?{' '}
-            <Text style={styles.alreadyLink}>Login</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
 
   return (
-    <View style={styles.container}>
-      {/* Top nav */}
-      <View style={styles.topNav}>
-        {current > 0 ? (
-          <TouchableOpacity
-            onPress={() => setCurrent(current - 1)}
-            style={styles.backCircle}
-          >
-            <Text style={styles.backArrow}>←</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={{ width: 40 }} />
-        )}
-        <TouchableOpacity onPress={handleSkip}>
+    <SafeAreaView style={styles.screen}>
+      {/* Logo row — per reference, wordmark centered at the top */}
+      <View style={styles.logoRow}>
+        <View style={styles.logoMark}><Ionicons name="sparkles" size={15} color={C.onPrimary} /></View>
+        <Text style={styles.logoName}>DecorAI GH</Text>
+        <Pressable onPress={skip} style={styles.skip} hitSlop={10}>
           <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
-      {/* Image area */}
-      <View style={[styles.imageArea, { backgroundColor: slide.bgColor + '22' }]}>
-        <View style={[styles.mockImage, { backgroundColor: slide.bgColor }]}>
-          <Text style={styles.slideEmoji}>{slide.emoji}</Text>
-          {slide.tag && (
-            <View style={styles.floatingTag}>
-              <Text style={styles.floatingTagText}>{slide.tag}</Text>
+      <Animated.ScrollView
+        ref={scrollRef}
+        horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => {
+          const p = Math.round(e.nativeEvent.contentOffset.x / width);
+          pageRef.current = p; setPage(p);
+        }}
+        style={{ flexGrow: 0 }}
+      >
+        {SLIDES.map((s) => (
+          <View key={s.hero} style={{ width, paddingHorizontal: 28 }}>
+            <View style={styles.heroArea}>
+              {s.hero === 'cards' && <CardsHero />}
+              {s.hero === 'decorators' && <DecoratorsHero />}
+              {s.hero === 'orbit' && <OrbitHero />}
             </View>
-          )}
-        </View>
+            <Text style={styles.title}>{s.title}</Text>
+            <Text style={styles.body}>{s.body}</Text>
+          </View>
+        ))}
+      </Animated.ScrollView>
+
+      {/* Dash-style page dots — active dot stretches into a dash */}
+      <View style={styles.dots}>
+        {SLIDES.map((_, i) => <Dot key={i} index={i} offset={offset} />)}
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
-        <Text style={styles.titleLarge}>{slide.title}</Text>
-        <Text style={styles.body}>{slide.body}</Text>
+      <View style={{ paddingHorizontal: 28 }}>
+        <Pressable onPress={next} style={({ pressed }) => [styles.cta, Shadow.float, pressed && { transform: [{ scale: 0.98 }] }]}>
+          <Text style={styles.ctaText}>{page === SLIDES.length - 1 ? 'Get Started' : 'Next'}</Text>
+        </Pressable>
+      </View>
+    </SafeAreaView>
+  );
+}
 
-        {/* Dots */}
-        <View style={styles.dotsRow}>
-          {slides.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                i === current ? styles.dotActive : styles.dotInactive,
-              ]}
-            />
-          ))}
-        </View>
-
-        <TouchableOpacity style={styles.btnDark} onPress={handleNext}>
-          <Text style={styles.btnDarkText}>
-            {current < slides.length - 1 ? 'Next ›' : 'Get Started →'}
-          </Text>
-        </TouchableOpacity>
+// Slide 1 — tilted stacked room photos with an overlapping pill badge.
+function CardsHero() {
+  const C = useColors();
+  const h = useMemo(() => makeHeroStyles(C), [C]);
+  return (
+    <View style={h.cardsWrap}>
+      <View style={[h.card, h.cardBack]}>
+        <Image source={{ uri: ROOM_2 }} style={h.cardImg} />
+      </View>
+      <View style={[h.card, h.cardFront, Shadow.float]}>
+        <Image source={{ uri: ROOM_1 }} style={h.cardImg} />
+        <View style={h.badge}><Text style={h.badgeText}>Decorate with AI</Text></View>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.bg,
+// Slide 2 — decorator rows with a rotated count chip; middle card elevated.
+function DecoratorsHero() {
+  const C = useColors();
+  const h = useMemo(() => makeHeroStyles(C), [C]);
+  const rows = [
+    { img: FACE_1, name: 'Akosua Mensah', sub: '120+ events', featured: false },
+    { img: FACE_2, name: 'Royal Touch Décor', sub: '200+ events', featured: true },
+    { img: FACE_3, name: 'Adum Blooms', sub: '85+ events', featured: false },
+  ];
+  return (
+    <View style={h.listWrap}>
+      <View style={[h.chip, Shadow.card, { alignSelf: 'flex-end', transform: [{ rotate: '8deg' }], marginBottom: 2 }]}>
+        <Text style={h.chipText}>100+ Decorators</Text>
+      </View>
+      {rows.map((r) => (
+        <View key={r.name} style={[h.row, r.featured ? [h.rowFeatured, Shadow.float] : null]}>
+          <Image source={{ uri: r.img }} style={h.avatar} />
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Text style={h.rowName}>{r.name}</Text>
+              <Ionicons name="checkmark-circle" size={14} color={C.accent} />
+            </View>
+            <Text style={h.rowSub}>{r.sub}</Text>
+          </View>
+          <View style={[h.followBtn, r.featured && { backgroundColor: C.primary }]}>
+            <Text style={[h.followText, r.featured && { color: C.onPrimary }]}>Book</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// Slide 3 — orbiting category icons around a central hub, with a count chip.
+function OrbitHero() {
+  const C = useColors();
+  const h = useMemo(() => makeHeroStyles(C), [C]);
+  const sats = [
+    { icon: 'bed-outline' as const, top: 10, left: 30 },
+    { icon: 'cart-outline' as const, top: 40, right: 14 },
+    { icon: 'color-palette-outline' as const, bottom: 26, left: 14 },
+    { icon: 'image-outline' as const, bottom: 6, right: 46 },
+  ];
+  return (
+    <View style={h.orbitWrap}>
+      <View style={[h.ring, { width: 250, height: 250, borderRadius: 125 }]} />
+      <View style={[h.ring, { width: 170, height: 170, borderRadius: 85 }]} />
+      <View style={[h.chip, Shadow.card, h.orbitChip]}>
+        <Text style={h.chipText}>30+ Categories</Text>
+      </View>
+      <View style={[h.hub, Shadow.float]}>
+        <Ionicons name="sparkles" size={30} color={C.onPrimary} />
+      </View>
+      {sats.map((s) => (
+        <View key={s.icon} style={[h.sat, Shadow.card, s]}>
+          <Ionicons name={s.icon} size={22} color={C.primary} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function Dot({ index, offset }: { index: number; offset: { value: number } }) {
+  const C = useColors();
+  const styles = useMemo(() => makeStyles(C), [C]);
+  const style = useAnimatedStyle(() => {
+    const page = offset.value / width;
+    return {
+      width: interpolate(page, [index - 1, index, index + 1], [7, 26, 7], 'clamp'),
+      opacity: interpolate(page, [index - 1, index, index + 1], [0.3, 1, 0.3], 'clamp'),
+    };
+  });
+  return <Animated.View style={[styles.dot, style]} />;
+}
+
+const makeStyles = (C: Palette) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: C.bg, justifyContent: 'space-between', paddingVertical: 14 },
+  logoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 40 },
+  logoMark: {
+    width: 26, height: 26, borderRadius: 9, backgroundColor: C.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
-  topNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 56,
-    paddingBottom: 16,
+  logoName: { fontSize: 18, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
+  skip: { position: 'absolute', right: 24 },
+  skipText: { ...Type.body, fontWeight: '600', color: C.textMuted },
+  heroArea: { height: 320, justifyContent: 'center', marginTop: 8, marginBottom: 22 },
+  title: {
+    fontSize: 28, fontWeight: '800', color: C.text, textAlign: 'center',
+    letterSpacing: -0.6, lineHeight: 34, marginBottom: 12,
   },
-  backCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+  body: { ...Type.body, fontSize: 14, color: C.textMuted, textAlign: 'center', lineHeight: 21, paddingHorizontal: 8 },
+  dots: { flexDirection: 'row', gap: 6, alignSelf: 'center', marginVertical: 22, alignItems: 'center' },
+  dot: { height: 7, borderRadius: 4, backgroundColor: C.primary },
+  cta: {
+    height: 58, borderRadius: 29, backgroundColor: C.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
-  backArrow: {
-    fontSize: 18,
-    color: Colors.text,
+  ctaText: { fontSize: 16, fontWeight: '700', color: C.onPrimary },
+});
+
+const makeHeroStyles = (C: Palette) => StyleSheet.create({
+  // slide 1
+  cardsWrap: { alignItems: 'center', justifyContent: 'center', flex: 1 },
+  card: { width: 230, height: 250, borderRadius: 26, backgroundColor: C.card, padding: 10 },
+  cardBack: { position: 'absolute', transform: [{ rotate: '-10deg' }, { translateX: -34 }, { translateY: -8 }], opacity: 0.9 },
+  cardFront: { transform: [{ rotate: '5deg' }, { translateX: 16 }] },
+  cardImg: { flex: 1, borderRadius: 18 },
+  badge: {
+    position: 'absolute', bottom: 26, right: -14, backgroundColor: C.text,
+    borderRadius: 18, paddingHorizontal: 14, height: 36, justifyContent: 'center',
   },
-  skipText: {
-    fontSize: 15,
-    color: Colors.textMuted,
-    fontWeight: '500',
+  badgeText: { color: C.bg, fontSize: 12, fontWeight: '700' },
+  // slide 2
+  listWrap: { gap: 10, justifyContent: 'center', flex: 1 },
+  chip: {
+    backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 12,
+    paddingVertical: 7, borderWidth: 1, borderColor: C.border,
   },
-  imageArea: {
-    marginHorizontal: 24,
-    borderRadius: 24,
-    overflow: 'hidden',
-    height: height * 0.42,
-    alignItems: 'center',
-    justifyContent: 'center',
+  chipText: { fontSize: 11, fontWeight: '700', color: C.text },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.cardMuted,
+    borderRadius: 20, padding: 12, marginHorizontal: 6,
   },
-  mockImage: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 24,
+  rowFeatured: { backgroundColor: C.card, marginHorizontal: 0 },
+  avatar: { width: 44, height: 44, borderRadius: 22 },
+  rowName: { fontSize: 14, fontWeight: '700', color: C.text },
+  rowSub: { fontSize: 12, color: C.textMuted, marginTop: 1 },
+  followBtn: {
+    backgroundColor: C.card, borderRadius: 16, paddingHorizontal: 16,
+    height: 32, justifyContent: 'center',
   },
-  mockImageLast: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#D1FAE5',
-    borderRadius: 24,
-    gap: 12,
+  followText: { fontSize: 12, fontWeight: '700', color: C.text },
+  // slide 3
+  orbitWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  ring: { position: 'absolute', borderWidth: 1, borderColor: C.border },
+  orbitChip: { position: 'absolute', top: 6, right: 22 },
+  hub: {
+    width: 86, height: 86, borderRadius: 43, backgroundColor: C.primary,
+    alignItems: 'center', justifyContent: 'center',
   },
-  mockEmoji: {
-    fontSize: 80,
-  },
-  slideEmoji: {
-    fontSize: 90,
-  },
-  floatingTag: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: Colors.white,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  floatingTagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.primary,
-    letterSpacing: 0.5,
-  },
-  tagBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    gap: 8,
-  },
-  tagDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  tagText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  mockSubTag: {
-    fontSize: 13,
-    color: Colors.textMuted,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 28,
-    paddingTop: 28,
-    alignItems: 'center',
-  },
-  titleLarge: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: Colors.text,
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 34,
-  },
-  body: {
-    fontSize: 15,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 28,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 28,
-  },
-  dot: {
-    height: 8,
-    borderRadius: 4,
-  },
-  dotActive: {
-    width: 28,
-    backgroundColor: Colors.accent,
-  },
-  dotInactive: {
-    width: 8,
-    backgroundColor: Colors.border,
-  },
-  btnDark: {
-    backgroundColor: Colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
-    width: '100%',
-    alignItems: 'center',
-  },
-  btnDarkText: {
-    color: Colors.white,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  btnPrimary: {
-    backgroundColor: Colors.accent,
-    borderRadius: 16,
-    paddingVertical: 16,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  btnPrimaryText: {
-    color: Colors.primary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  alreadyText: {
-    fontSize: 14,
-    color: Colors.textMuted,
-  },
-  alreadyLink: {
-    color: Colors.primary,
-    fontWeight: '700',
+  sat: {
+    position: 'absolute', width: 54, height: 54, borderRadius: 27, backgroundColor: C.card,
+    alignItems: 'center', justifyContent: 'center',
   },
 });

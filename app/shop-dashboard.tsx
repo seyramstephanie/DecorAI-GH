@@ -1,336 +1,133 @@
-import { useState } from "react";
-import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { BottomNav } from '../components/ui/BottomNav';
+import { Pill } from '../components/ui/Chip';
+import { EmptyState } from '../components/ui/ScreenHeader';
+import { Radii, Shadow, Type } from '../constants/theme';
+import { Palette, useColors } from '../lib/theme';
+import { api, Notification, Shop } from '../lib/api';
+import { session } from '../lib/session';
 
-const alerts = [
-  {
-    id: "1",
-    client: "Ama Serwaa",
-    items: "Fresh flowers, wreaths",
-    location: "Kumasi",
-    distance: "1.2 km",
-    time: "5 mins ago",
-    read: false,
-  },
-  {
-    id: "2",
-    client: "Kofi Mensah",
-    items: "Balloon arch, latex balloons",
-    location: "Kumasi",
-    distance: "2.8 km",
-    time: "20 mins ago",
-    read: false,
-  },
-  {
-    id: "3",
-    client: "Abena Asante",
-    items: "Floral centrepieces",
-    location: "Kumasi",
-    distance: "0.5 km",
-    time: "1 hour ago",
-    read: true,
-  },
-];
+const RADIUS_OPTIONS = [5, 10, 15, 20, 25];
 
-const stock = [
-  {
-    id: "1",
-    name: "Fresh Rose Bundles",
-    quantity: 45,
-    unit: "bundles",
-    status: "good",
-  },
-  {
-    id: "2",
-    name: "White Lilies",
-    quantity: 12,
-    unit: "bundles",
-    status: "low",
-  },
-  {
-    id: "3",
-    name: "Floral Wreaths",
-    quantity: 8,
-    unit: "pieces",
-    status: "low",
-  },
-  {
-    id: "4",
-    name: "Dried Flowers",
-    quantity: 60,
-    unit: "packs",
-    status: "good",
-  },
-];
+const timeAgo = (iso: string) => {
+  const mins = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  return hrs < 24 ? `${hrs}h ago` : `${Math.round(hrs / 24)}d ago`;
+};
 
+// Shop-owner view: FR-18 radius subscription + FR-26 incoming radius alerts
 export default function ShopDashboard() {
-  const [radius, setRadius] = useState(5);
-  const [alertList, setAlertList] = useState(alerts);
-  const [activeTab, setActiveTab] = useState("alerts");
+  const C = useColors();
+  const styles = useMemo(() => makeStyles(C), [C]);
+  const [shop, setShop] = useState<Shop | null>(null);
+  const [alerts, setAlerts] = useState<Notification[]>([]);
+  const [error, setError] = useState(false);
 
-  const unread = alertList.filter((a) => !a.read).length;
+  useEffect(() => {
+    // Your shop = the directory entry sharing your account's phone number
+    // (demo: kwame@adumblooms.gh / 1234 owns Adum Blooms). Fallback: first shop.
+    api.get<Shop[]>('/shops')
+      .then((shops) => {
+        const mine = shops.find((s) => s.phone === session.user?.phone) ?? shops[0];
+        setShop(mine);
+        return api.get<Notification[]>(`/notifications?userId=shop-${mine.id}`);
+      })
+      .then((n) => setAlerts(n.filter((x) => x.type === 'radius')))
+      .catch(() => setError(true));
+  }, []);
 
-  const markRead = (id: string) => {
-    setAlertList(
-      alertList.map((a) => (a.id === id ? { ...a, read: true } : a)),
-    );
+  const setRadius = (radiusKm: number) => {
+    if (!shop) return;
+    setShop({ ...shop, radiusKm });
+    api.patch(`/shops/${shop.id}/radius`, { radiusKm }).catch(() => {});
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Shop Dashboard</Text>
-      <Text style={styles.shopName}>Kumasi Floral Hub</Text>
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      <Text style={styles.hero}>My shop</Text>
+      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        {error && <EmptyState icon="cloud-offline-outline" title="Backend offline" body="Start it with: npm run server." />}
 
-      {/* Stats Row */}
-      <View style={styles.statsRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNum}>{unread}</Text>
-          <Text style={styles.statLabel}>New Alerts</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNum}>24</Text>
-          <Text style={styles.statLabel}>Views Today</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNum}>8</Text>
-          <Text style={styles.statLabel}>Enquiries</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNum}>⭐4.8</Text>
-          <Text style={styles.statLabel}>Rating</Text>
-        </View>
-      </View>
-
-      {/* Radius Setting */}
-      <View style={styles.radiusCard}>
-        <Text style={styles.radiusTitle}>📍 Alert Radius</Text>
-        <Text style={styles.radiusValue}>{radius} km</Text>
-        <View style={styles.radiusBtns}>
-          {[2, 5, 10, 20].map((r) => (
-            <TouchableOpacity
-              key={r}
-              style={[styles.radiusBtn, radius === r && styles.radiusBtnActive]}
-              onPress={() => setRadius(r)}
-            >
-              <Text
-                style={[
-                  styles.radiusBtnText,
-                  radius === r && styles.radiusBtnTextActive,
-                ]}
-              >
-                {r}km
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "alerts" && styles.tabActive]}
-          onPress={() => setActiveTab("alerts")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "alerts" && styles.tabTextActive,
-            ]}
-          >
-            Alerts {unread > 0 && `(${unread})`}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === "stock" && styles.tabActive]}
-          onPress={() => setActiveTab("stock")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "stock" && styles.tabTextActive,
-            ]}
-          >
-            Stock
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {activeTab === "alerts" && (
-          <View>
-            {alertList.map((a) => (
-              <TouchableOpacity
-                key={a.id}
-                style={[styles.alertCard, !a.read && styles.alertCardUnread]}
-                onPress={() => markRead(a.id)}
-              >
-                <View style={styles.alertTop}>
-                  <Text style={styles.alertClient}>👤 {a.client}</Text>
-                  <Text style={styles.alertTime}>{a.time}</Text>
+        {shop && (
+          <>
+            <View style={[styles.card, Shadow.card, { padding: 0, overflow: 'hidden' }]}>
+              {!!shop.image && <Image source={{ uri: shop.image }} style={styles.shopPhoto} contentFit="cover" transition={250} />}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16 }}>
+                <View style={styles.shopIcon}><Ionicons name="storefront" size={20} color={C.primary} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.name}>{shop.name}</Text>
+                  <Text style={styles.meta}>{shop.category} · {shop.area}, {shop.location}</Text>
                 </View>
-                <Text style={styles.alertItems}>🛍️ {a.items}</Text>
-                <View style={styles.alertBottom}>
-                  <Text style={styles.alertLocation}>
-                    📍 {a.location} · {a.distance}
-                  </Text>
-                  <TouchableOpacity style={styles.respondBtn}>
-                    <Text style={styles.respondBtnText}>Respond</Text>
-                  </TouchableOpacity>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+                {shop.verified && <Ionicons name="checkmark-circle" size={18} color={C.success} />}
+              </View>
+            </View>
 
-        {activeTab === "stock" && (
-          <View>
-            {stock.map((s) => (
-              <View key={s.id} style={styles.stockCard}>
-                <View style={styles.stockInfo}>
-                  <Text style={styles.stockName}>{s.name}</Text>
-                  <Text style={styles.stockQty}>
-                    {s.quantity} {s.unit}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.stockBadge,
-                    s.status === "low" ? styles.badgeLow : styles.badgeGood,
-                  ]}
-                >
-                  <Text style={styles.badgeText}>
-                    {s.status === "low" ? "Low Stock" : "In Stock"}
-                  </Text>
+            <Text style={styles.section}>Catchment radius</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {RADIUS_OPTIONS.map((km) => (
+                <Pill key={km} label={`${km} km`} active={shop.radiusKm === km} onPress={() => setRadius(km)} />
+              ))}
+            </View>
+            <Text style={styles.hint}>
+              You’ll be alerted when a client inside this radius searches for items you stock.
+            </Text>
+
+            <Text style={styles.section}>My stock</Text>
+            <View style={styles.chips}>
+              {shop.stock.map((s) => (
+                <View key={s} style={styles.chip}><Text style={styles.chipText}>{s}</Text></View>
+              ))}
+            </View>
+
+            <Text style={styles.section}>Incoming alerts</Text>
+            {alerts.length === 0 && (
+              <EmptyState icon="megaphone-outline" title="No alerts yet"
+                body="When a nearby client searches for items you stock, it appears here." />
+            )}
+            {alerts.map((a) => (
+              <View key={a.id} style={[styles.card, Shadow.card, styles.alert]}>
+                <View style={styles.alertIcon}><Ionicons name="megaphone-outline" size={17} color={C.primary} /></View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[Type.body, { fontWeight: '600', color: C.text }]}>{a.title}</Text>
+                  <Text style={[Type.caption, { color: C.textMuted, lineHeight: 17 }]}>{a.body}</Text>
+                  <Text style={styles.time}>{timeAgo(a.at)}</Text>
                 </View>
               </View>
             ))}
-            <TouchableOpacity style={styles.addStockBtn}>
-              <Text style={styles.addStockText}>+ Update Stock</Text>
-            </TouchableOpacity>
-          </View>
+          </>
         )}
-        <View style={{ height: 40 }} />
       </ScrollView>
+      <BottomNav />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5", padding: 16 },
-  header: { fontSize: 24, fontWeight: "bold", color: "#1B4332" },
-  shopName: { fontSize: 14, color: "#666", marginBottom: 16 },
-  statsRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  statCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 10,
-    alignItems: "center",
-    elevation: 1,
+const makeStyles = (C: Palette) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: C.bg },
+  hero: { ...Type.hero, color: C.text, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 14 },
+  body: { paddingHorizontal: 20, paddingBottom: 24 },
+  card: { backgroundColor: C.card, borderRadius: Radii.md, padding: 16 },
+  shopPhoto: { height: 130 },
+  shopIcon: {
+    width: 42, height: 42, borderRadius: 21, backgroundColor: C.accentSoft,
+    alignItems: 'center', justifyContent: 'center',
   },
-  statNum: { fontSize: 18, fontWeight: "bold", color: "#1B4332" },
-  statLabel: { fontSize: 10, color: "#888", marginTop: 2, textAlign: "center" },
-  radiusCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 1,
+  name: { ...Type.subtitle, color: C.text },
+  meta: { ...Type.caption, color: C.textMuted },
+  section: { ...Type.subtitle, color: C.text, marginTop: 22, marginBottom: 10 },
+  hint: { ...Type.caption, color: C.textLight, marginTop: 10, lineHeight: 17 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: { backgroundColor: C.accentSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
+  chipText: { fontSize: 11, fontWeight: '600', color: C.primary },
+  alert: { flexDirection: 'row', gap: 12, marginBottom: 10 },
+  alertIcon: {
+    width: 34, height: 34, borderRadius: 17, backgroundColor: C.accentSoft,
+    alignItems: 'center', justifyContent: 'center',
   },
-  radiusTitle: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#1B4332",
-    marginBottom: 4,
-  },
-  radiusValue: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#1B4332",
-    marginBottom: 12,
-  },
-  radiusBtns: { flexDirection: "row", gap: 8 },
-  radiusBtn: {
-    flex: 1,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: "#f5f5f5",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  radiusBtnActive: { backgroundColor: "#1B4332", borderColor: "#1B4332" },
-  radiusBtnText: { fontSize: 13, color: "#666", fontWeight: "600" },
-  radiusBtnTextActive: { color: "#fff" },
-  tabs: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 4,
-    marginBottom: 16,
-  },
-  tab: { flex: 1, padding: 10, alignItems: "center", borderRadius: 8 },
-  tabActive: { backgroundColor: "#1B4332" },
-  tabText: { fontSize: 14, fontWeight: "600", color: "#666" },
-  tabTextActive: { color: "#fff" },
-  alertCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    elevation: 1,
-  },
-  alertCardUnread: { borderLeftWidth: 4, borderLeftColor: "#1B4332" },
-  alertTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  alertClient: { fontSize: 14, fontWeight: "bold", color: "#1B4332" },
-  alertTime: { fontSize: 11, color: "#999" },
-  alertItems: { fontSize: 13, color: "#555", marginBottom: 8 },
-  alertBottom: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  alertLocation: { fontSize: 12, color: "#888" },
-  respondBtn: {
-    backgroundColor: "#1B4332",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  respondBtnText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  stockCard: {
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    elevation: 1,
-  },
-  stockInfo: { flex: 1 },
-  stockName: { fontSize: 14, fontWeight: "600", color: "#333" },
-  stockQty: { fontSize: 12, color: "#888", marginTop: 2 },
-  stockBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  badgeGood: { backgroundColor: "#E8F5E9" },
-  badgeLow: { backgroundColor: "#FFF3E0" },
-  badgeText: { fontSize: 11, fontWeight: "600", color: "#1B4332" },
-  addStockBtn: {
-    backgroundColor: "#1B4332",
-    borderRadius: 10,
-    padding: 14,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  addStockText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  time: { fontSize: 10, color: C.textLight, marginTop: 2 },
 });

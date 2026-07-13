@@ -1,0 +1,136 @@
+[
+  {
+    "id": "s1",
+    "name": "Adum Blooms & Events",
+    "category": "Florist",
+    "area": "Adum",
+    "location": "Kumasi",
+    "lat": 6.6906,
+    "lng": -1.628,
+    "rating": 4.8,
+    "reviews": 124,
+    "phone": "+233 24 111 2233",
+    "verified": true,
+    "radiusKm": 10,
+    "stock": [
+      "fresh flowers",
+      "floral arch",
+      "centrepieces",
+      "flower stands",
+      "wreaths",
+      "potted plant"
+    ]
+  },
+  {
+    "id": "s2",
+    "name": "Kejetia Fabrics & Drapes",
+    "category": "Fabric Supplier",
+    "area": "Kejetia",
+    "location": "Kumasi",
+    "lat": 6.697,
+    "lng": -1.6178,
+    "rating": 4.6,
+    "reviews": 89,
+    "phone": "+233 20 445 6677",
+    "verified": true,
+    "radiusKm": 15,
+    "stock": [
+      "drapes",
+      "kente runners",
+      "chair covers",
+      "table cloths",
+      "backdrop fabric",
+      "wall art",
+      "frames"
+    ]
+  },
+  {
+    "id": "s3",
+    "name": "Ahodwo Home & Furniture",
+    "category": "Furniture",
+    "area": "Ahodwo",
+    "location": "Kumasi",
+    "lat": 6.667,
+    "lng": -1.63,
+    "rating": 4.7,
+    "reviews": 203,
+    "phone": "+233 54 889 0011",
+    "verified": true,
+    "radiusKm": 12,
+    "stock": [
+      "sofa",
+      "armchair",
+      "cushions",
+      "coffee table",
+      "side table",
+      "rug"
+    ]
+  },
+  {
+    "id": "s4",
+    "name": "Bantama Lights & Sound",
+    "category": "Lighting Rental",
+    "area": "Bantama",
+    "location": "Kumasi",
+    "lat": 6.705,
+    "lng": -1.635,
+    "rating": 4.5,
+    "reviews": 67,
+    "phone": "+233 26 223 4455",
+    "verified": true,
+    "radiusKm": 20,
+    "stock": [
+      "string lights",
+      "uplighting",
+      "fairy lights",
+      "floor lamp",
+      "chandeliers",
+      "stage lighting"
+    ]
+  },
+  {
+    "id": "s5",
+    "name": "Osu Decor Mart",
+    "category": "General Decor",
+    "area": "Osu",
+    "location": "Accra",
+    "lat": 5.556,
+    "lng": -0.175,
+    "rating": 4.9,
+    "reviews": 311,
+    "phone": "+233 30 990 8877",
+    "verified": true,
+    "radiusKm": 18,
+    "stock": [
+      "balloons",
+      "balloon arch",
+      "desk",
+      "bed frame",
+      "marble table",
+      "vases",
+      "candles",
+      "frames"
+    ]
+  },
+  {
+    "id": "s6",
+    "name": "Tamale Events Supply",
+    "category": "Event Rentals",
+    "area": "Central",
+    "location": "Tamale",
+    "lat": 9.4008,
+    "lng": -0.8393,
+    "rating": 4.4,
+    "reviews": 42,
+    "phone": "+233 24 667 7889",
+    "verified": true,
+    "radiusKm": 25,
+    "stock": [
+      "canopy",
+      "plastic chairs",
+      "stage skirting",
+      "drapes",
+      "balloon columns"
+    ]
+  }
+]

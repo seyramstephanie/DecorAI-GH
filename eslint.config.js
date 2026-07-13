@@ -7,4 +7,11 @@ module.exports = defineConfig([
   {
     ignores: ['dist/*'],
   },
+  {
+    // server/ runs on plain Node (CommonJS), not React Native
+    files: ['server/**/*.js'],
+    languageOptions: {
+      globals: { __dirname: 'readonly', Buffer: 'readonly', process: 'readonly' },
+    },
+  },
 ]);

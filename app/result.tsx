@@ -1,399 +1,222 @@
-import { useLocalSearchParams } from 'expo-router';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  SafeAreaView,
-} from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Colors } from '../constants/colors';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Button } from '../components/ui/Button';
+import { Radii, Shadow, Type } from '../constants/theme';
+import { Palette, useColors } from '../lib/theme';
+import { generateDecoration } from '../lib/ai';
+import { actions, useStore } from '../lib/store';
 
-const variants = [
-  { label: 'Modern Royal Wedding', emoji: '💍', bg: '#1A237E' },
-  { label: 'Garden Fresh', emoji: '🌿', bg: '#1B4332' },
-  { label: 'Midnight Glam', emoji: '✨', bg: '#4A148C' },
-];
+// Object-type toggles per UI reference (armchair / lamp / frame / plant)
+const OBJECT_TYPES = [
+  { icon: 'seat-outline', match: ['sofa', 'chair', 'furniture', 'table', 'seat', 'cushion'] },
+  { icon: 'lamp', match: ['lamp', 'light', 'chandelier', 'uplight'] },
+  { icon: 'image-frame', match: ['frame', 'art', 'portrait', 'backdrop', 'banner'] },
+  { icon: 'flower-outline', match: ['flower', 'plant', 'floral', 'wreath', 'centrepiece'] },
+] as const;
 
-const items = aiResult
-  ? aiResult
-      .split('\n')
-      .filter((line) => line.trim().startsWith('-') || line.trim().match(/^\d\./))
-      .slice(0, 6)
-      .map((line) => ({
-        label: line.replace(/^[-\d.]\s*/, '').trim(),
-        sub: 'Tap to find in local shops',
-        emoji: '✨',
-      }))
-  : [
-      { label: 'Gold Tall Centrepiece', sub: 'Used: 24 Pieces', emoji: '🏆' },
-      { label: 'Royal Blue Drapes', sub: 'Premium Velvet', emoji: '💙' },
-      { label: 'White Rose Bundles', sub: 'Fresh/Artificial Option', emoji: '🌹' },
-    ];
-
-const { aiResult, eventType, decorStyle } = useLocalSearchParams<{
-  aiResult: string;
-  eventType: string;
-  decorStyle: string;
-}>();
-
-export default function ResultScreen() {
+export default function Result() {
+  const C = useColors();
+  const styles = useMemo(() => makeStyles(C), [C]);
   const router = useRouter();
-  const [variant, setVariant] = useState(0);
+  const { brief, variants } = useStore();
+  const [stage, setStage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [index, setIndex] = useState(0);
+  const [objType, setObjType] = useState(0);
+  const running = useRef(false);
+
+  const MAX_VARIANTS = 3; // FR-12
+
+  const generate = async () => {
+    if (!brief || running.current) return;
+    running.current = true;
+    setError(null);
+    try {
+      const variant = variants.length + 1;
+      const result = await generateDecoration(
+        brief.photoB64, brief.eventType,
+        variant === 1 ? brief.style : `${brief.style}, interpretation ${variant} — a distinctly different take`,
+        brief.vision, setStage,
+      );
+      actions.addVariant(result);
+      setIndex(variants.length);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      running.current = false;
+      setStage(null);
+    }
+  };
+
+  useEffect(() => { if (brief && variants.length === 0) generate(); }, []);
+
+  if (!brief) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.center}><Text style={Type.body}>No brief — start from Decorate with AI.</Text></View>
+      </SafeAreaView>
+    );
+  }
+
+  const current = variants[index];
+  const filteredItems = current
+    ? current.items.filter((i) => OBJECT_TYPES[objType].match.some((m) => i.toLowerCase().includes(m)))
+    : [];
+  const shownItems = filteredItems.length ? filteredItems : current?.items ?? [];
+
+  const save = () => {
+    if (!current) return;
+    actions.saveDesign({
+      id: `${Date.now()}`, imageBase64: current.imageBase64, items: current.items,
+      eventType: brief.eventType, style: brief.style, vision: brief.vision,
+      createdAt: new Date().toISOString(),
+    });
+    router.push('/saved');
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Hero preview */}
-        <View style={[styles.hero, { backgroundColor: variants[variant].bg }]}>
-          {/* Top buttons */}
-          <View style={styles.heroTop}>
-            <TouchableOpacity
-              style={styles.heroBtn}
-              onPress={() => router.back()}
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      {/* Top bar — per UI reference: ← 01/10 → and ✕ */}
+      <View style={styles.topBar}>
+        <Pressable onPress={() => setIndex(Math.max(0, index - 1))} hitSlop={10}>
+          <Ionicons name="arrow-back" size={22} color={index === 0 ? C.textLight : C.text} />
+        </Pressable>
+        <Text style={styles.counter}>
+          <Text style={{ color: C.accent }}>{String(index + 1).padStart(2, '0')}</Text>
+          /{String(Math.max(variants.length, 1)).padStart(2, '0')}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 18 }}>
+          <Pressable onPress={() => setIndex(Math.min(variants.length - 1, index + 1))} hitSlop={10}>
+            <Ionicons name="arrow-forward" size={22} color={index >= variants.length - 1 ? C.textLight : C.text} />
+          </Pressable>
+          <Pressable onPress={() => router.dismissTo('/home')} hitSlop={10}>
+            <Ionicons name="close" size={24} color={C.text} />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Preview */}
+      <View style={styles.previewWrap}>
+        {current ? (
+          <Animated.View entering={FadeIn.duration(400)} style={[styles.preview, Shadow.card]}>
+            <Image
+              source={{ uri: `data:image/png;base64,${current.imageBase64}` }}
+              style={{ flex: 1 }} contentFit="cover" transition={300}
+            />
+            {current.attempts > 1 && (
+              <View style={styles.attemptTag}>
+                <Ionicons name="shield-checkmark" size={12} color={C.white} />
+                <Text style={styles.attemptText}>structure checked ×{current.attempts}</Text>
+              </View>
+            )}
+          </Animated.View>
+        ) : (
+          <View style={[styles.preview, styles.center, { backgroundColor: C.cardMuted }]}>
+            {error ? (
+              <View style={{ alignItems: 'center', gap: 14, paddingHorizontal: 30 }}>
+                <Ionicons name="cloud-offline-outline" size={34} color={C.textMuted} />
+                <Text style={[Type.body, { color: C.textMuted, textAlign: 'center' }]}>{error}</Text>
+                <Button title="Try again" onPress={generate} style={{ height: 44 }} />
+              </View>
+            ) : (
+              <View style={{ alignItems: 'center', gap: 14 }}>
+                <ActivityIndicator size="large" color={C.primary} />
+                <Text style={[Type.body, { color: C.textMuted }]}>{stage ?? 'Preparing…'}</Text>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
+
+      {/* Bottom sheet — object-type toggles + identified items + actions */}
+      <Animated.View entering={FadeInUp.duration(450)} style={[styles.sheet, Shadow.float]}>
+        <View style={styles.toggles}>
+          {OBJECT_TYPES.map((t, i) => (
+            <Pressable
+              key={t.icon}
+              onPress={() => setObjType(i)}
+              style={[styles.toggle, i === objType && styles.toggleActive]}
             >
-              <Text style={styles.heroBtnText}>←</Text>
-            </TouchableOpacity>
-            <View style={styles.heroTopRight}>
-              <TouchableOpacity style={styles.heroBtn}>
-                <Text style={styles.heroBtnText}>↑</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.heroBtn, styles.heartBtn]}>
-                <Text style={styles.heroBtnText}>♥</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Preview */}
-          <View style={styles.heroContent}>
-            <Text style={styles.heroEmoji}>{variants[variant].emoji}</Text>
-            <Text style={styles.heroTitle}>{variants[variant].label}</Text>
-            <Text style={styles.heroSub}>Variant {variant + 1} of 3</Text>
-          </View>
-
-          {/* Dots */}
-          <View style={styles.heroDots}>
-            {variants.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.heroDot,
-                  i === variant && styles.heroDotActive,
-                ]}
-              />
-            ))}
-          </View>
+              <MaterialCommunityIcons name={t.icon} size={26} color={i === objType ? C.onPrimary : C.text} />
+            </Pressable>
+          ))}
         </View>
 
-        <View style={styles.body}>
-          {/* Design Variants */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>DESIGN VARIANTS</Text>
-            <TouchableOpacity>
-              <Text style={styles.regenerate}>REGENERATE</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.variantsRow}
-          >
-            {variants.map((v, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[
-                  styles.variantThumb,
-                  { backgroundColor: v.bg },
-                  i === variant && styles.variantThumbActive,
-                ]}
-                onPress={() => setVariant(i)}
-              >
-                <Text style={styles.variantThumbEmoji}>{v.emoji}</Text>
-              </TouchableOpacity>
+        {current && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.items}>
+            {shownItems.map((item) => (
+              <View key={item} style={styles.itemChip}><Text style={styles.itemText}>{item}</Text></View>
             ))}
           </ScrollView>
+        )}
 
-          {/* Action buttons */}
-          <View style={styles.actionsRow}>
-            {[
-              { emoji: '💾', label: 'Save' },
-              { emoji: '↗️', label: 'Share' },
-              { emoji: '📤', label: 'Send To' },
-            ].map((a) => (
-              <TouchableOpacity key={a.label} style={styles.actionBtn}>
-                <Text style={styles.actionBtnEmoji}>{a.emoji}</Text>
-                <Text style={styles.actionBtnLabel}>{a.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Items */}
-          <Text style={styles.itemsTitle}>ITEMS IN THIS DESIGN</Text>
-          <View style={styles.itemsList}>
-            {items.map((item, i) => (
-              <TouchableOpacity key={i} style={styles.itemRow}>
-                <View style={styles.itemIcon}>
-                  <Text style={styles.itemEmoji}>{item.emoji}</Text>
-                </View>
-                <View style={styles.itemText}>
-                  <Text style={styles.itemLabel}>{item.label}</Text>
-                  <Text style={styles.itemSub}>{item.sub}</Text>
-                </View>
-                <Text style={styles.itemArrow}>›</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Bottom buttons */}
-          <View style={styles.bottomBtns}>
-            <TouchableOpacity
-              style={styles.outlineBtn}
-              onPress={() => router.push('/shops')}
-            >
-              <Text style={styles.outlineBtnText}>🏪 Find Shops</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.solidBtn}
-              onPress={() => router.push('/decorators')}
-            >
-              <Text style={styles.solidBtnText}>📋 Book Decorator</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.actionsRow}>
+          <Button
+            title={variants.length < MAX_VARIANTS ? 'New variant' : 'Max variants'}
+            variant="outline" icon="color-wand-outline"
+            onPress={generate}
+            disabled={!current || !!stage || variants.length >= MAX_VARIANTS}
+            style={{ flex: 1, height: 46 }}
+          />
+          <Button title="Save" variant="ghost" icon="bookmark-outline" onPress={save} disabled={!current} style={{ flex: 1, height: 46 }} />
+          <Button
+            title="Share" variant="ghost" icon="share-social-outline"
+            onPress={() => Share.share({ message: `My DecorAI GH ${brief.eventType} design — ${brief.style} style. Items: ${current?.items.join(', ')}` })}
+            disabled={!current} style={{ flex: 1, height: 46 }}
+          />
         </View>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+        <View style={styles.actionsRow}>
+          <Button
+            title="Find items in shops" icon="cart-outline"
+            onPress={() => router.push({ pathname: '/shops', params: { items: JSON.stringify(current?.items ?? []) } })}
+            disabled={!current} style={{ flex: 1, height: 50 }}
+          />
+          <Button
+            title="Send to decorator" variant="outline" icon="person-outline"
+            onPress={() => router.push({ pathname: '/decorators', params: { designId: 'current' } })}
+            disabled={!current} style={{ flex: 1, height: 50 }}
+          />
+        </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: Colors.bg,
+const makeStyles = (C: Palette) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: C.bg },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  topBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 12,
   },
-  container: {
-    flex: 1,
+  counter: { ...Type.subtitle, color: C.textMuted, letterSpacing: 1 },
+  previewWrap: { flex: 1, paddingHorizontal: 20 },
+  preview: { flex: 1, borderRadius: Radii.lg, overflow: 'hidden', backgroundColor: C.card },
+  attemptTag: {
+    position: 'absolute', bottom: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: C.overlay, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5,
   },
-  hero: {
-    height: 320,
-    paddingTop: 16,
-    paddingHorizontal: 20,
+  attemptText: { color: C.white, fontSize: 11, fontWeight: '600' },
+  sheet: {
+    backgroundColor: C.card, borderTopLeftRadius: Radii.xl, borderTopRightRadius: Radii.xl,
+    padding: 20, gap: 14, marginTop: 16,
   },
-  heroTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  // 4 object-type toggles share the full row width, so the block sits centered
+  toggles: { flexDirection: 'row', gap: 12 },
+  toggle: {
+    flex: 1, height: 58, borderRadius: Radii.md, backgroundColor: C.cardMuted,
+    alignItems: 'center', justifyContent: 'center',
   },
-  heroTopRight: {
-    flexDirection: 'row',
-    gap: 10,
+  toggleActive: { backgroundColor: C.primary },
+  items: { gap: 8 },
+  itemChip: {
+    backgroundColor: C.accentSoft, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 7,
   },
-  heroBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.white + 'CC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heartBtn: {
-    backgroundColor: '#E53935CC',
-  },
-  heroBtnText: {
-    fontSize: 18,
-    color: Colors.text,
-    fontWeight: '600',
-  },
-  heroContent: {
-    flex: 1,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-    paddingBottom: 16,
-  },
-  heroEmoji: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  heroTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.white,
-    marginBottom: 4,
-  },
-  heroSub: {
-    fontSize: 13,
-    color: Colors.white + 'BB',
-  },
-  heroDots: {
-    flexDirection: 'row',
-    gap: 6,
-    justifyContent: 'center',
-    paddingBottom: 16,
-  },
-  heroDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.white + '55',
-  },
-  heroDotActive: {
-    width: 20,
-    backgroundColor: Colors.white,
-  },
-  body: {
-    padding: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMuted,
-    letterSpacing: 0.8,
-  },
-  regenerate: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.primary,
-    letterSpacing: 0.5,
-  },
-  variantsRow: {
-    marginBottom: 20,
-  },
-  variantThumb: {
-    width: 90,
-    height: 70,
-    borderRadius: 12,
-    marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  variantThumbActive: {
-    borderColor: Colors.primary,
-  },
-  variantThumbEmoji: {
-    fontSize: 28,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  actionBtn: {
-    alignItems: 'center',
-    gap: 6,
-  },
-  actionBtnEmoji: {
-    fontSize: 24,
-  },
-  actionBtnLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  itemsTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMuted,
-    letterSpacing: 0.8,
-    marginBottom: 14,
-  },
-  itemsList: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    gap: 14,
-  },
-  itemIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: Colors.green100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  itemEmoji: {
-    fontSize: 22,
-  },
-  itemText: {
-    flex: 1,
-  },
-  itemLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 3,
-  },
-  itemSub: {
-    fontSize: 12,
-    color: Colors.textMuted,
-  },
-  itemArrow: {
-    fontSize: 20,
-    color: Colors.textLight,
-  },
-  bottomBtns: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  outlineBtn: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  outlineBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.primary,
-  },
-  solidBtn: {
-    flex: 1,
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    shadowColor: Colors.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  solidBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.white,
-  },
+  itemText: { ...Type.caption, color: C.primary },
+  actionsRow: { flexDirection: 'row', gap: 10 },
 });
