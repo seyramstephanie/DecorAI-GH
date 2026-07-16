@@ -11,7 +11,7 @@ export type User = {
   location: string;
   role: Role;
   avatar?: string;
-  provider?: 'google' | 'facebook' | 'email';
+  provider?: 'google' | 'email';
   plan?: Plan;
   planExpiresAt?: string | null;
   decoratorId?: string | null;

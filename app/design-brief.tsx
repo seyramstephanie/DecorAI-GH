@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: Colors.green100,
+    backgroundColor: Colors.accentSoft,
     alignItems: "center",
     justifyContent: "center",
   },

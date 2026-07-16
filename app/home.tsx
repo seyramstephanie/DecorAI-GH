@@ -161,9 +161,8 @@ export default function Home() {
                   liked={favourites.includes(item.id)}
                   onToggleLike={() => actions.toggleFavourite(item.id)}
                   onPress={() => router.push({
-                    pathname: '/shops',
-                    // Search by a meaningful term (e.g. "Bed" / "Rattan") not only the last word
-                    params: { q: item.name.split(' ').slice(0, 2).join(' ') },
+                    pathname: '/product-detail' as any,
+                    params: { id: item.id },
                   })}
                 />
               </Animated.View>

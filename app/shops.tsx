@@ -17,6 +17,7 @@ import { Glass, GlassCard, GlassPill } from '../components/ui/Glass';
 import { EmptyState } from '../components/ui/ScreenHeader';
 import { SkeletonList } from '../components/ui/Skeleton';
 import { Radii, Type } from '../constants/theme';
+import { LOOKBOOK_SHOP } from '../data/seed';
 import { api, Shop } from '../lib/api';
 import { Palette, useColors } from '../lib/theme';
 
@@ -163,6 +164,20 @@ export default function Shops() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Flagship Look Studio — stocks every Shop the look product */}
+        {!items.length && (
+          <Pressable onPress={() => router.push('/shop-lookbook' as any)}>
+            <GlassCard isInteractive style={styles.lookBanner}>
+              <Image source={{ uri: LOOKBOOK_SHOP.image }} style={styles.lookImg} contentFit="cover" />
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={styles.lookTitle}>{LOOKBOOK_SHOP.name}</Text>
+                <Text style={styles.lookMeta}>All Shop the look pieces · Accra</Text>
+                <Text style={styles.lookCta}>Open lookbook →</Text>
+              </View>
+            </GlassCard>
+          </Pressable>
+        )}
+
         {alerted > 0 && (
           <View style={styles.banner}>
             <Ionicons name="megaphone-outline" size={16} color={C.primary} />
@@ -348,6 +363,13 @@ const makeStyles = (C: Palette) =>
     },
     list: { flex: 1 },
     body: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 28, gap: 12 },
+    lookBanner: {
+      flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: Radii.lg,
+    },
+    lookImg: { width: 72, height: 72, borderRadius: 14 },
+    lookTitle: { ...Type.subtitle, color: C.text, fontSize: 15 },
+    lookMeta: { ...Type.caption, color: C.textMuted },
+    lookCta: { ...Type.caption, color: C.primary, fontWeight: '800', marginTop: 2 },
     skeletonWrap: {
       // Keep skeleton fully inside list bounds — no negative margins / overlays
       marginTop: 0,

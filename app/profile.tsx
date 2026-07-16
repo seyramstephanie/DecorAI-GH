@@ -73,10 +73,11 @@ export default function Profile() {
             const role = user?.role;
             const hasBookings = role === 'client';
             const hasUpgrade = role === 'client' && !isPro;
+            const hasProRow = role === 'client' && isPro;
             const hasShop = role === 'shop';
             const hasDecorator = role === 'decorator';
             const hasAdmin = role === 'admin';
-            const hasExtra = hasBookings || hasShop || hasDecorator || hasAdmin;
+            const hasExtra = hasBookings || hasUpgrade || hasProRow || hasShop || hasDecorator || hasAdmin;
             return (
               <>
                 <Row label="Messages" onPress={() => router.push('/messages')} chevron />
@@ -91,11 +92,20 @@ export default function Profile() {
                     label="My Bookings"
                     onPress={() => router.push('/bookings')}
                     chevron
-                    last={!hasUpgrade}
+                    last={!hasUpgrade && !hasProRow && !hasShop && !hasDecorator && !hasAdmin}
                   />
                 )}
                 {hasUpgrade && (
                   <Row label="Upgrade to Pro" value="AI" onPress={() => router.push('/pro' as any)} chevron last />
+                )}
+                {hasProRow && (
+                  <Row
+                    label="Pro plan"
+                    value="Active"
+                    onPress={() => router.push('/pro' as any)}
+                    chevron
+                    last={!hasShop && !hasDecorator && !hasAdmin}
+                  />
                 )}
                 {hasShop && (
                   <Row label="My Shop Dashboard" onPress={() => router.push('/shop-dashboard')} chevron last />

@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     gap: 12,
     margin: 20,
     padding: 16,
-    backgroundColor: Colors.green100,
+    backgroundColor: Colors.accentSoft,
     borderRadius: 14,
     borderLeftWidth: 4,
     borderLeftColor: Colors.primary,
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   radiusCardActive: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.green100,
+    backgroundColor: Colors.accentSoft,
   },
   radiusLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
   radio: {
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   categoryChipActive: {
-    backgroundColor: Colors.green100,
+    backgroundColor: Colors.accentSoft,
     borderColor: Colors.primary,
   },
   categoryEmoji: { fontSize: 16 },

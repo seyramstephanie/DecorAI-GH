@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../components/ui/Button';
@@ -9,10 +9,9 @@ import { Glass, GlassOption } from '../components/ui/Glass';
 import { Type } from '../constants/theme';
 import { api } from '../lib/api';
 import { Role, session, User } from '../lib/session';
-import { SocialProfile, useFacebookSignIn, useGoogleSignIn } from '../lib/social-auth';
+import { googleAuthConfigured, SocialProfile, useGoogleSignIn } from '../lib/social-auth';
 import { Palette, useColors } from '../lib/theme';
 
-// Role is chosen only at signup — locked for the life of the account.
 const ROLES: { role: Exclude<Role, 'admin'>; icon: keyof typeof Ionicons.glyphMap; title: string; sub: string }[] = [
   { role: 'client', icon: 'home-outline', title: 'Client', sub: 'Browse & book' },
   { role: 'decorator', icon: 'color-palette-outline', title: 'Decorator', sub: 'Offer services' },
@@ -32,19 +31,40 @@ export default function Auth() {
   const [phone, setPhone] = useState('');
   const [location, setLocation] = useState('');
   const [role, setRole] = useState<Exclude<Role, 'admin'>>('client');
-  // Decorator self-serve profile (clients see them after admin approval)
   const [businessName, setBusinessName] = useState('');
   const [bio, setBio] = useState('');
   const [priceRange, setPriceRange] = useState('');
   const [specialisations, setSpecialisations] = useState('Wedding, Home Interior');
-  // Shop self-serve
   const [shopName, setShopName] = useState('');
   const [category, setCategory] = useState('General Decor');
   const [stock, setStock] = useState('vases, cushions, drapes');
   const [busy, setBusy] = useState(false);
 
-  const enter = (user: User) => {
+  const enter = (user: User, opts?: { welcome?: boolean; isNew?: boolean }) => {
     session.set(user);
+    if (opts?.welcome || opts?.isNew) {
+      Alert.alert(
+        'Welcome to DecorAI GH',
+        user.role === 'decorator'
+          ? 'Your studio is ready. Check Notifications for updates while admin verifies you.'
+          : user.role === 'shop'
+            ? 'Your shop account is ready. Open Notifications for next steps.'
+            : 'Your account is ready. Open the bell icon to see your welcome message.',
+        [
+          { text: 'View notifications', onPress: () => router.replace('/notification' as any) },
+          {
+            text: 'Continue',
+            onPress: () => {
+              if (user.role === 'admin') router.replace('/admin' as any);
+              else if (user.role === 'decorator') router.replace('/decorator-dashboard');
+              else if (user.role === 'shop') router.replace('/shop-dashboard');
+              else router.replace('/home');
+            },
+          },
+        ],
+      );
+      return;
+    }
     if (user.role === 'admin') router.replace('/admin' as any);
     else if (user.role === 'decorator') router.replace('/decorator-dashboard');
     else if (user.role === 'shop') router.replace('/shop-dashboard');
@@ -62,8 +82,14 @@ export default function Auth() {
       if (mode === 'login') {
         enter(await api.post<User>('/login', { email, password }));
       } else {
-        if (!emailValid(email)) { Alert.alert('Check email', 'Enter a valid email address.'); return; }
-        if (password.length < 4) { Alert.alert('Password', 'Use at least 4 characters.'); return; }
+        if (!emailValid(email)) {
+          Alert.alert('Check email', 'Enter a valid email address.');
+          return;
+        }
+        if (password.length < 4) {
+          Alert.alert('Password', 'Use at least 4 characters.');
+          return;
+        }
         const payload: Record<string, unknown> = {
           name: name || 'Guest',
           email,
@@ -85,13 +111,7 @@ export default function Auth() {
           payload.stock = stock.split(',').map((s) => s.trim()).filter(Boolean);
         }
         const user = await api.post<User>('/register', payload);
-        if (role === 'decorator') {
-          Alert.alert(
-            'Application submitted',
-            'Your decorator profile is pending admin approval. You can finish editing details in your studio while you wait.',
-          );
-        }
-        enter(user);
+        enter(user, { welcome: true, isNew: true });
       }
     } catch (e: unknown) {
       const msg = String((e as Error)?.message ?? e);
@@ -107,29 +127,50 @@ export default function Auth() {
     } finally { setBusy(false); }
   };
 
-  const social = async (p: SocialProfile) => {
+  const social = useCallback(async (p: SocialProfile) => {
     setBusy(true);
     try {
+      // Prefer login if the Google account already exists
+      try {
+        const existing = await api.post<User>('/login', {
+          email: p.email,
+          password: '', // social accounts may have null hash — backend still returns 401 if hash set
+          provider: 'google',
+        });
+        // If login somehow succeeded without password, use it
+        enter(existing);
+        return;
+      } catch {
+        // fall through to register / social upsert
+      }
+
       const payload: Record<string, unknown> = {
-        ...p,
+        name: p.name,
+        email: p.email,
+        provider: 'google',
+        avatar: p.avatar,
         role: mode === 'signup' ? role : 'client',
         location: location || 'Kumasi',
         phone: phone || '',
-        name: p.name,
       };
       if (mode === 'signup' && role === 'decorator') {
         payload.businessName = businessName || `${p.name} Decor`;
         payload.bio = bio || 'Professional decorator on DecorAI GH.';
         payload.specialisations = specialisations.split(',').map((s) => s.trim()).filter(Boolean);
       }
-      // Backend returns existing user (locked role) if email already registered via social.
-      enter(await api.post<User>('/register', payload));
-    } catch {
-      Alert.alert('Sign-in failed', 'Could not complete Google/Facebook sign-in.');
-    } finally { setBusy(false); }
-  };
+      // Backend: new user → welcome notification; existing Google email → return locked role
+      const user = await api.post<User>('/register', payload);
+      // Heuristic: if we just created them, they get welcome. Existing social returns same shape.
+      // Always offer notifications after Google for first-time feel; backend only creates notif on insert.
+      enter(user, { welcome: mode === 'signup' });
+    } catch (e: unknown) {
+      Alert.alert('Google sign-in failed', String((e as Error).message || 'Could not complete Google sign-in. Is the API running?'));
+    } finally {
+      setBusy(false);
+    }
+  }, [mode, role, location, phone, businessName, bio, specialisations]);
+
   const google = useGoogleSignIn(social);
-  const facebook = useFacebookSignIn(social);
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -139,17 +180,18 @@ export default function Auth() {
           <Text style={styles.logoName}>DecorAI GH</Text>
         </View>
 
-        {([
-          ['logo-google', 'Continue with Google', google, '#DB4437'],
-          ['logo-facebook', 'Continue with Facebook', facebook, '#1877F2'],
-        ] as const).map(([icon, label, onPress, tint]) => (
-          <Pressable key={label} onPress={onPress} disabled={busy} style={{ marginBottom: 12 }}>
-            <Glass isInteractive glassEffectStyle="clear" style={styles.socialBtn}>
-              <Ionicons name={icon} size={20} color={tint} style={styles.socialIcon} />
-              <Text style={styles.socialLabel}>{label}</Text>
-            </Glass>
-          </Pressable>
-        ))}
+        <Pressable
+          onPress={google}
+          disabled={busy}
+          style={{ marginBottom: 12 }}
+        >
+          <Glass isInteractive glassEffectStyle="clear" style={styles.socialBtn}>
+            <Ionicons name="logo-google" size={20} color="#DB4437" style={styles.socialIcon} />
+            <Text style={styles.socialLabel}>
+              {googleAuthConfigured ? 'Continue with Google' : 'Continue with Google (set client ID)'}
+            </Text>
+          </Glass>
+        </Pressable>
 
         {mode === 'signup' && (
           <Field label="Name" value={name} onChangeText={setName} placeholder="Your full name" valid={name.trim().length > 2} />
@@ -225,7 +267,7 @@ export default function Auth() {
 
         {mode === 'login' && (
           <Text style={styles.demo}>
-            Demo: seyram@decorai.gh / 1234 (client Pro) · akosua@royaltouch.gh / 1234 (decorator) · admin@decorai.gh / 1234
+            Demo: seyram@decorai.gh / 1234 · akosua@royaltouch.gh / 1234 · admin@decorai.gh / 1234
           </Text>
         )}
       </ScrollView>

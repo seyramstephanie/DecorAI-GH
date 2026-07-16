@@ -183,10 +183,11 @@ export default function PlaceMap() {
         </Glass>
       </View>
 
-      <Glass intensity="strong" glassEffectStyle="regular" style={styles.info}>
-        <View style={{ flex: 1 }}>
+      {/* Solid card over the map so distance/meta text stays readable (not brown-on-white glass) */}
+      <View style={styles.info}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.infoTitle} numberOfLines={1}>{place?.title ?? 'Browse suppliers near you'}</Text>
-          <Text style={styles.infoMeta} numberOfLines={1}>
+          <Text style={styles.infoMeta} numberOfLines={2}>
             {eta ?? (me && dest && `${kmBetween(me, dest).toFixed(1)} km away`)
               ?? (dest ? (denied ? 'Location permission denied' : 'Finding your location…') : `${places.length || '…'} verified shops on the map`)}
             {!MAPS_KEY && me && dest ? ' · straight-line' : ''}
@@ -194,15 +195,13 @@ export default function PlaceMap() {
         </View>
         {dest ? (
           <View style={styles.actions}>
-            <Pressable onPress={viewAllSuppliers} disabled={busyAll}>
-              <Glass isInteractive glassEffectStyle="clear" style={styles.secondary}>
-                {busyAll ? <ActivityIndicator color={C.primary} size="small" /> : (
-                  <>
-                    <Ionicons name="map-outline" size={15} color={C.primary} />
-                    <Text style={styles.secondaryText}>All</Text>
-                  </>
-                )}
-              </Glass>
+            <Pressable onPress={viewAllSuppliers} disabled={busyAll} style={styles.secondary}>
+              {busyAll ? <ActivityIndicator color={C.primary} size="small" /> : (
+                <>
+                  <Ionicons name="map-outline" size={15} color={C.primary} />
+                  <Text style={styles.secondaryText}>All</Text>
+                </>
+              )}
             </Pressable>
             <Pressable style={styles.go} onPress={openExternal}>
               <Ionicons name="navigate" size={16} color={C.onPrimary} />
@@ -219,7 +218,7 @@ export default function PlaceMap() {
             )}
           </Pressable>
         )}
-      </Glass>
+      </View>
     </View>
   );
 }
@@ -230,13 +229,40 @@ const makeStyles = (C: Palette) => StyleSheet.create({
   topButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   titlePill: { flex: 1, maxWidth: 270, flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 22, height: 44, paddingHorizontal: 14, overflow: 'hidden' },
   mapTitle: { ...Type.body, fontWeight: '700', color: C.text, flex: 1 },
-  info: { position: 'absolute', left: 16, right: 16, bottom: 24, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 18, padding: 14, overflow: 'hidden' },
-  infoTitle: { ...Type.subtitle, fontSize: 15, color: C.text },
-  infoMeta: { ...Type.caption, color: C.textMuted, marginTop: 2 },
+  info: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 18,
+    padding: 14,
+    // Opaque panel — map tiles under translucent glass made muted brown text unreadable
+    backgroundColor: C.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.border,
+    shadowColor: '#1F1A16',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  infoTitle: { ...Type.subtitle, fontSize: 15, color: C.text, fontWeight: '700' },
+  // Darker than textMuted so distance/ETA stays readable on white
+  infoMeta: { ...Type.caption, color: C.text, opacity: 0.72, marginTop: 3, fontWeight: '500', lineHeight: 17 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   secondary: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    borderRadius: 21, height: 42, paddingHorizontal: 12, overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 21,
+    height: 42,
+    paddingHorizontal: 12,
+    backgroundColor: C.accentSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.border,
   },
   secondaryText: { color: C.primary, fontWeight: '700', fontSize: 13 },
   go: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.primary, borderRadius: 21, height: 42, paddingHorizontal: 16 },

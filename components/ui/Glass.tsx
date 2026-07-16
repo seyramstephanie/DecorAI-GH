@@ -20,14 +20,22 @@ import { Radii, Type } from '../../constants/theme';
 import { useStore } from '../../lib/store';
 import { useColors } from '../../lib/theme';
 
+/** Cached once per JS runtime — Apple Liquid Glass (iOS 26+ real device / supported builds). */
+let _liquidGlassCached: boolean | null = null;
+
 /** True when native Apple Liquid Glass can render. */
 export function canUseLiquidGlass(): boolean {
-  if (Platform.OS !== 'ios') return false;
-  try {
-    return Boolean(isLiquidGlassAvailable?.() && isGlassEffectAPIAvailable?.());
-  } catch {
+  if (_liquidGlassCached != null) return _liquidGlassCached;
+  if (Platform.OS !== 'ios') {
+    _liquidGlassCached = false;
     return false;
   }
+  try {
+    _liquidGlassCached = Boolean(isLiquidGlassAvailable?.() && isGlassEffectAPIAvailable?.());
+  } catch {
+    _liquidGlassCached = false;
+  }
+  return _liquidGlassCached;
 }
 
 type GlassProps = {
@@ -187,7 +195,12 @@ export function GlassIconToggle({
   );
 }
 
-/** Settings row with glass track aesthetic around the switch. */
+/**
+ * Settings row with liquid-glass track around the switch.
+ *
+ * Important: never paint a fully opaque track when ON — that covered the glass
+ * and made it look like liquid glass “stopped working” half the time.
+ */
 export function GlassToggleRow({
   label,
   value,
@@ -200,6 +213,8 @@ export function GlassToggleRow({
   last?: boolean;
 }) {
   const C = useColors();
+  const dark = useStore().prefs.darkMode;
+  const liquid = canUseLiquidGlass();
   const stylesLocal = useMemo(() => StyleSheet.create({
     row: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -209,20 +224,39 @@ export function GlassToggleRow({
     },
     label: { ...Type.body, fontSize: 15, fontWeight: '600', color: C.text, flex: 1 },
     glassSwitch: {
-      borderRadius: 20, paddingHorizontal: 6, paddingVertical: 4, overflow: 'hidden',
+      borderRadius: 20,
+      paddingHorizontal: 5,
+      paddingVertical: 3,
+      overflow: 'hidden',
+      // Soft rim so glass is visible even on solid card backgrounds
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(31,26,22,0.08)',
     },
-  }), [C, last]);
+  }), [C, last, dark]);
+
+  // Translucent tracks keep blur/liquid glass visible in both states
+  const trackOff = dark ? 'rgba(255,255,255,0.12)' : 'rgba(31,26,22,0.10)';
+  const trackOn = dark ? 'rgba(193,101,59,0.55)' : 'rgba(154,74,31,0.50)';
 
   return (
     <View style={stylesLocal.row}>
       <Text style={stylesLocal.label}>{label}</Text>
-      <Glass isInteractive glassEffectStyle="clear" style={stylesLocal.glassSwitch}>
+      <Glass
+        isInteractive={liquid}
+        glassEffectStyle="clear"
+        intensity="strong"
+        // Warm tint when ON so “active” still reads without hiding glass
+        tintColor={value
+          ? (dark ? 'rgba(193,101,59,0.28)' : 'rgba(154,74,31,0.22)')
+          : undefined}
+        style={stylesLocal.glassSwitch}
+      >
         <Switch
           value={value}
           onValueChange={onValueChange}
-          trackColor={{ false: 'transparent', true: C.primary }}
+          trackColor={{ false: trackOff, true: trackOn }}
           thumbColor={C.white}
-          ios_backgroundColor="transparent"
+          ios_backgroundColor={trackOff}
         />
       </Glass>
     </View>

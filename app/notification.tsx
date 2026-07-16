@@ -56,8 +56,11 @@ export default function Notifications() {
         {error && <EmptyState icon="cloud-offline-outline" title="Backend offline" body="Start it with: npm run server." />}
         {loading && !error && <SkeletonList count={5} />}
         {!loading && !error && rows.length === 0 && (
-          <EmptyState icon="notifications-outline" title="All caught up"
-            body="Radius alerts, booking updates and weekly inspiration will appear here." />
+          <EmptyState
+            icon="notifications-outline"
+            title="No notifications yet"
+            body="Welcome messages, password resets, booking updates and shop alerts will show up here."
+          />
         )}
         {!loading && rows.map((n, i) => (
           <Animated.View key={`${n.id}-${i}`} entering={FadeInDown.delay(Math.min(i, 10) * 40).duration(300)}>

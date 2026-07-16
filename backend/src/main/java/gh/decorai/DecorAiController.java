@@ -7,8 +7,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -81,10 +79,17 @@ public class DecorAiController {
     if ("decorator".equals(role)) {
       String decoratorId = createDecoratorProfile(id, name, phone, location, body);
       jdbc.update("update users set decorator_id = ? where id = ?", decoratorId, id);
+      notify(id, "digest", "Welcome, " + firstName(name) + "!",
+        "Your decorator studio is set up. We'll notify you when an admin verifies your profile so clients can find you.");
       notify("admin", "brief", "New decorator signup", name + " applied as a decorator — review in Admin.");
     } else if ("shop".equals(role)) {
       String shopId = createShopProfile(id, name, phone, location, body);
       jdbc.update("update users set shop_id = ? where id = ?", shopId, id);
+      notify(id, "digest", "Welcome, shop owner!",
+        "Your shop is live on DecorAI GH. Update stock and catchment radius from My Shop Dashboard.");
+    } else {
+      notify(id, "digest", "Welcome to DecorAI GH 🎉",
+        "Hi " + firstName(name) + "! Browse shops, message decorators, and upgrade to Pro to unlock Decorate with AI.");
     }
     return publicUser(getUser(id));
   }
@@ -108,18 +113,32 @@ public class DecorAiController {
     if (email.isBlank()) throw badRequest("Email is required.");
     List<String> users = jdbc.query("select id from users where email = ?", (rs, i) -> rs.getString(1), email);
     // Always return success to avoid email enumeration.
-    if (users.isEmpty()) return map("ok", true, "message", "If that email exists, a reset code was sent.");
+    if (users.isEmpty()) {
+      return map("ok", true, "message", "If that email is registered, a 6-digit code was sent. Check your inbox and spam folder.");
+    }
 
+    String userId = users.get(0);
     String code = String.format("%06d", random.nextInt(1_000_000));
     String resetId = id();
     jdbc.update(
       "insert into password_resets (id,email,code,expires_at) values (?,?,?,?)",
       resetId, email, code, OffsetDateTime.now().plusMinutes(20)
     );
-    sendResetEmail(email, code);
-    Map<String, Object> out = map("ok", true, "message", "If that email exists, a reset code was sent.");
-    // Dev convenience when mail is not configured — never enable in production with real users only.
-    if (env("MAIL_USERNAME").isBlank()) out.put("devCode", code);
+    String mailError = sendResetEmail(email, code);
+    boolean mailed = mailError == null;
+    notify(userId, "digest", "Password reset code",
+      mailed
+        ? ("We emailed a 6-digit code to " + email + ". It expires in 20 minutes.")
+        : ("Your reset code is " + code + " (email delivery failed: " + mailError + "). It expires in 20 minutes."));
+    Map<String, Object> out = map(
+      "ok", true,
+      "mailed", mailed,
+      "message", mailed
+        ? "Check your email (and spam) for a 6-digit code. It expires in 20 minutes."
+        : ("Email could not be sent (" + mailError + "). Use the code shown below.")
+    );
+    // Always include code when mail fails so the user can still reset
+    if (!mailed) out.put("devCode", code);
     return out;
   }
 
@@ -139,6 +158,11 @@ public class DecorAiController {
     jdbc.update("update password_resets set used = true where id = ?", rows.get(0).get("id"));
     int updated = jdbc.update("update users set password_hash = ? where email = ?", passwordEncoder.encode(password), email);
     if (updated == 0) throw notFound("Account not found.");
+    List<String> userIds = jdbc.query("select id from users where email = ?", (rs, i) -> rs.getString(1), email);
+    if (!userIds.isEmpty()) {
+      notify(userIds.get(0), "digest", "Password updated",
+        "Your password was changed successfully. You can sign in with your new password.");
+    }
     return map("ok", true, "message", "Password updated. You can sign in.");
   }
 
@@ -246,6 +270,7 @@ public class DecorAiController {
     );
 
     if (secret.isBlank()) {
+      System.err.println("[paystack] PAYSTACK_SECRET_KEY missing — mock checkout only. Set it in root .env and restart the API.");
       // Dev without Paystack keys: return a local mock checkout that verify will accept.
       return map(
         "reference", reference,
@@ -253,17 +278,19 @@ public class DecorAiController {
         "amount", amount,
         "currency", "GHS",
         "mock", true,
-        "message", "PAYSTACK_SECRET_KEY not set — use verify with this reference for local Pro unlock."
+        "message", "PAYSTACK_SECRET_KEY not set on API — mock unlock only. Restart server after editing root .env."
       );
     }
 
     try {
+      String callback = defaulted(env("PAYSTACK_CALLBACK_URL"), "http://localhost:4000/billing/callback");
       Map<String, Object> payload = map(
         "email", email,
         "amount", amount,
         "currency", "GHS",
         "reference", reference,
-        "callback_url", defaulted(env("PAYSTACK_CALLBACK_URL"), "decorai://billing/callback"),
+        // Paystack requires a real http(s) URL — never a custom app scheme.
+        "callback_url", callback,
         "metadata", map("userId", user.get("id"), "plan", "pro")
       );
       HttpRequest req = HttpRequest.newBuilder()
@@ -278,6 +305,7 @@ public class DecorAiController {
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, root.path("message").asText("Paystack init failed"));
       }
       JsonNode data = root.path("data");
+      System.out.println("[paystack] checkout initialized ref=" + reference + " callback=" + callback);
       return map(
         "reference", data.path("reference").asText(reference),
         "authorizationUrl", data.path("authorization_url").asText(),
@@ -290,10 +318,90 @@ public class DecorAiController {
     catch (Exception e) { throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Paystack unavailable: " + e.getMessage()); }
   }
 
+  /**
+   * Paystack browser redirect lands here (must be http/https).
+   * Verifies payment immediately, shows a clear success page, then deep-links to the app.
+   *
+   * Note: free ngrok may show an interstitial ("Visit Site") before this page — that is normal.
+   */
+  @GetMapping("/billing/callback")
+  org.springframework.http.ResponseEntity<String> paystackCallback(
+      @RequestParam(required = false) String reference,
+      @RequestParam(required = false) String trxref
+  ) {
+    String ref = reference != null && !reference.isBlank() ? reference : (trxref == null ? "" : trxref);
+    boolean unlocked = false;
+    if (!ref.isBlank()) {
+      try {
+        applySuccessfulPayment(ref);
+        unlocked = true;
+        System.out.println("[paystack] callback verified + unlocked ref=" + ref);
+      } catch (Exception e) {
+        System.err.println("[paystack] callback verify failed ref=" + ref + ": " + e.getMessage());
+      }
+    }
+    String appUrl = "decoraigh://billing/callback" + (ref.isBlank() ? "" : ("?reference=" + ref));
+    String title = unlocked ? "You're on Pro!" : "Payment received";
+    String body = unlocked
+      ? "DecorAI GH Pro is active for 30 days. Decorate with AI is unlocked."
+      : "If you finished checkout, open the app and tap Upgrade once more to confirm.";
+    String html = """
+      <!DOCTYPE html>
+      <html><head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title>DecorAI GH — %s</title>
+        <style>
+          body{font-family:system-ui,-apple-system,sans-serif;background:#FAF7F4;color:#1F1A16;
+            display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:20px}
+          .card{background:#fff;padding:32px 28px;border-radius:20px;max-width:380px;width:100%%;text-align:center;
+            box-shadow:0 12px 40px rgba(31,26,22,.1)}
+          .badge{display:inline-block;background:#9A4A1F;color:#fff;font-weight:800;font-size:12px;
+            letter-spacing:1px;padding:6px 14px;border-radius:999px;margin-bottom:16px}
+          h1{font-size:24px;margin:0 0 10px}
+          p{color:#6B635C;line-height:1.5;margin:0 0 12px}
+          .btn{display:inline-block;margin-top:8px;background:#9A4A1F;color:#fff;text-decoration:none;
+            font-weight:700;padding:14px 22px;border-radius:28px}
+          .ref{font-size:12px;color:#A39A93;margin-top:18px;word-break:break-all}
+          .hint{font-size:12px;color:#8A8178;margin-top:16px;line-height:1.4}
+        </style>
+      </head><body>
+        <div class="card">
+          <div class="badge">PRO</div>
+          <h1>%s</h1>
+          <p>%s</p>
+          <p><a class="btn" href="%s">Open DecorAI GH</a></p>
+          <p class="hint">If you saw an ngrok warning first, that is normal for free tunnels — tap <b>Visit Site</b>, then use the button above.</p>
+          <p class="ref">Ref: %s</p>
+        </div>
+        <script>
+          setTimeout(function(){ try { window.location.href = %s; } catch(e){} }, 800);
+        </script>
+      </body></html>
+      """.formatted(
+        unlocked ? "Pro unlocked" : "Payment",
+        title,
+        body,
+        appUrl,
+        ref.isBlank() ? "—" : ref,
+        "\"" + appUrl.replace("\"", "\\\"") + "\""
+      );
+    return org.springframework.http.ResponseEntity.ok()
+      .header("Content-Type", "text/html; charset=UTF-8")
+      // Help some clients skip caches; ngrok free interstitial is browser-only
+      .header("ngrok-skip-browser-warning", "true")
+      .body(html);
+  }
+
   @PostMapping("/billing/verify")
   Map<String, Object> verifyBilling(@RequestBody Map<String, Object> body) {
     String reference = string(body, "reference");
     if (reference.isBlank()) throw badRequest("Payment reference is required.");
+    return applySuccessfulPayment(reference);
+  }
+
+  /** Confirm with Paystack (or mock), mark payment success, set plan=pro for 30 days. */
+  private Map<String, Object> applySuccessfulPayment(String reference) {
     List<Map<String, Object>> payments = jdbc.query(
       "select id, user_id, status from payments where reference = ?",
       (rs, i) -> map("id", rs.getString("id"), "userId", rs.getString("user_id"), "status", rs.getString("status")),
@@ -301,7 +409,8 @@ public class DecorAiController {
     );
     if (payments.isEmpty()) throw notFound("Payment not found.");
     Map<String, Object> payment = payments.get(0);
-    if ("success".equals(payment.get("status"))) return publicUser(getUser(String.valueOf(payment.get("userId"))));
+    String userId = String.valueOf(payment.get("userId"));
+    if ("success".equals(payment.get("status"))) return publicUser(getUser(userId));
 
     String secret = env("PAYSTACK_SECRET_KEY");
     boolean paid = secret.isBlank(); // mock mode auto-succeeds
@@ -324,12 +433,11 @@ public class DecorAiController {
       throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "Payment not completed.");
     }
     jdbc.update("update payments set status = 'success' where reference = ?", reference);
-    String userId = String.valueOf(payment.get("userId"));
     jdbc.update(
       "update users set plan = 'pro', plan_expires_at = ? where id = ?",
       OffsetDateTime.now().plusDays(30), userId
     );
-    notify(userId, "digest", "Welcome to Pro", "Decorate with AI is unlocked for 30 days. Create beautiful rooms anytime.");
+    notify(userId, "digest", "Welcome to Pro", "You're on DecorAI GH Pro for 30 days. Decorate with AI is unlocked.");
     return publicUser(getUser(userId));
   }
 
@@ -579,22 +687,70 @@ public class DecorAiController {
     if (!"admin".equals(user.get("role"))) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin only.");
   }
 
-  private void sendResetEmail(String email, String code) {
-    String username = env("MAIL_USERNAME");
-    if (username.isBlank()) return;
+  /**
+   * Sends reset code via Gmail SMTP.
+   * @return null on success, or a short error string for the client / logs
+   */
+  private String sendResetEmail(String email, String code) {
+    String username = DotEnv.get("MAIL_USERNAME");
+    String password = DotEnv.get("MAIL_PASSWORD");
+    if (username.isBlank()) {
+      System.err.println("[mail] MAIL_USERNAME empty");
+      return "MAIL_USERNAME is empty in .env";
+    }
+    if (password.isBlank()) {
+      System.err.println("[mail] MAIL_PASSWORD empty");
+      return "MAIL_PASSWORD is empty in .env";
+    }
+    if (password.length() != 16) {
+      System.err.println("[mail] MAIL_PASSWORD length=" + password.length() + " (Gmail App Passwords are 16 chars)");
+    }
     try {
+      // Always build a fresh sender so credentials match the latest .env
+      org.springframework.mail.javamail.JavaMailSenderImpl sender = MailConfig.createSender();
+      sender.setUsername(username);
+      sender.setPassword(password);
+
       SimpleMailMessage message = new SimpleMailMessage();
       message.setTo(email);
       message.setFrom(username);
-      message.setSubject("DecorAI GH — password reset code");
+      message.setReplyTo(username);
+      message.setSubject("DecorAI GH password reset code");
       message.setText(
-        "Your DecorAI GH password reset code is: " + code + "\n\n"
-          + "It expires in 20 minutes. If you did not request this, ignore this email.\n"
+        "Hi,\n\n"
+          + "Your DecorAI GH password reset code is:\n\n"
+          + "    " + code + "\n\n"
+          + "Enter this code in the app. It expires in 20 minutes.\n"
+          + "If you did not request a reset, you can ignore this email.\n\n"
+          + "DecorAI GH\n"
       );
-      mailSender.send(message);
+      sender.send(message);
+      System.out.println("[mail] Reset code sent to " + email + " via " + username);
+      return null;
     } catch (Exception e) {
-      throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not send email. Check MAIL_USERNAME / MAIL_PASSWORD (Gmail app password).");
+      Throwable root = e;
+      while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+      String detail = root.getMessage() != null ? root.getMessage() : e.getMessage();
+      System.err.println("[mail] Failed to send to " + email + ": " + detail);
+      e.printStackTrace(System.err);
+      // Friendly hints for common Gmail failures
+      String lower = detail == null ? "" : detail.toLowerCase(Locale.ROOT);
+      if (lower.contains("authentication") || lower.contains("username and password") || lower.contains("535")) {
+        return "Gmail rejected login — use a 16-char App Password (not your normal password). "
+          + "Google Account → Security → 2-Step Verification → App passwords.";
+      }
+      if (lower.contains("timed out") || lower.contains("connect")) {
+        return "Could not reach smtp.gmail.com:587 (network/firewall).";
+      }
+      return detail != null ? detail : "SMTP send failed";
     }
+  }
+
+  private static String firstName(String name) {
+    if (name == null || name.isBlank()) return "there";
+    String t = name.trim();
+    int sp = t.indexOf(' ');
+    return sp < 0 ? t : t.substring(0, sp);
   }
 
   private Map<String, Object> publicUser(Map<String, Object> user) {
@@ -770,18 +926,7 @@ public class DecorAiController {
   }
 
   private String env(String key) {
-    String fromSys = System.getenv(key);
-    if (fromSys != null && !fromSys.isBlank()) return fromSys;
-    for (Path candidate : new Path[]{Path.of(".env"), Path.of("..", ".env")}) {
-      try {
-        for (String line : Files.readAllLines(candidate)) {
-          if (line.startsWith(key + "=")) {
-            return line.substring(key.length() + 1).trim().replaceAll("^['\"]|['\"]$", "");
-          }
-        }
-      } catch (Exception ignored) { }
-    }
-    return "";
+    return DotEnv.get(key);
   }
 
   private int integerFromEnv(String key, int fallback) {
