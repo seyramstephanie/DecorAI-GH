@@ -7,8 +7,8 @@ import Animated, {
   FadeInLeft, FadeInRight, FadeOut, runOnJS, useAnimatedStyle, useSharedValue,
   withRepeat, withSequence, withSpring, withTiming,
 } from 'react-native-reanimated';
-import { Shadow } from '../../constants/theme';
 import { Palette, useColors } from '../../lib/theme';
+import { Glass } from './Glass';
 
 // Floating "Decorate with AI" bubble — draggable, docks to the left/right screen
 // edge, and every few seconds "thinks" (pulse + dots) then briefly shows its label.
@@ -81,12 +81,14 @@ export function AiBubble({ onPress }: { onPress: () => void }) {
           <Animated.View
             entering={(dockedRight ? FadeInRight : FadeInLeft).duration(260)}
             exiting={FadeOut.duration(180)}
-            style={[styles.labelPill, Shadow.float, dockedRight ? { right: SIZE + 10 } : { left: SIZE + 10 }]}
+            style={[styles.labelPillWrap, dockedRight ? { right: SIZE + 10 } : { left: SIZE + 10 }]}
           >
-            <Text style={styles.labelText} numberOfLines={1}>Decorate with AI ✨</Text>
+            <Glass isInteractive glassEffectStyle="clear" style={styles.labelPill}>
+              <Text style={styles.labelText} numberOfLines={1}>Decorate with AI ✨</Text>
+            </Glass>
           </Animated.View>
         )}
-        <Animated.View style={[styles.bubble, Shadow.float, bubbleStyle]}>
+        <Animated.View style={[styles.bubble, bubbleStyle]}>
           <LinearGradient
             colors={[C.primaryLight, C.primary]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -134,12 +136,11 @@ const makeStyles = (C: Palette) => StyleSheet.create({
   gradient: {
     flex: 1, borderRadius: SIZE / 2, alignItems: 'center', justifyContent: 'center',
   },
-  // explicit width: the wrapper is only bubble-sized, so an absolute child would
-  // otherwise get ~0 available width and truncate the text to "D..."
+  labelPillWrap: {
+    position: 'absolute', top: SIZE / 2 - 19, width: 172, height: 38,
+  },
   labelPill: {
-    position: 'absolute', top: SIZE / 2 - 19, width: 172, height: 38, borderRadius: 19,
-    backgroundColor: C.card, borderWidth: 1, borderColor: C.border,
-    alignItems: 'center', justifyContent: 'center',
+    flex: 1, borderRadius: 19, alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   labelText: { fontSize: 13, fontWeight: '700', color: C.primary },
   dotsRow: { flexDirection: 'row', gap: 4, alignItems: 'center' },

@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../components/ui/Button';
+import { GlassCard } from '../components/ui/Glass';
 import { EmptyState, ScreenHeader } from '../components/ui/ScreenHeader';
-import { Radii, Shadow, Type } from '../constants/theme';
-import { Palette, useColors } from '../lib/theme';
-import { api, Booking } from '../lib/api';
+import { SkeletonList } from '../components/ui/Skeleton';
+import { Radii, Type } from '../constants/theme';
+import { API_BASE, api, Booking } from '../lib/api';
 import { session } from '../lib/session';
+import { Palette, useColors } from '../lib/theme';
 
 const STAGES = ['Enquiry', 'Confirmed', 'In Preparation', 'Completed'] as const;
 
@@ -17,16 +19,38 @@ export default function Bookings() {
   const C = useColors();
   const styles = useMemo(() => makeStyles(C), [C]);
   const router = useRouter();
+  const user = useSyncExternalStore(session.subscribe, () => session.user);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(() => {
-    api.get<Booking[]>(`/bookings?clientId=${session.user?.id ?? 'guest'}`)
-      .then(setBookings).catch(() => setError(true));
-  }, []);
-  useEffect(load, [load]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const clientId = user?.id;
+      // Always hit a real filter when signed in; never hardcode offline.
+      const path = clientId
+        ? `/bookings?clientId=${encodeURIComponent(clientId)}`
+        : '/bookings';
+      const rows = await api.get<Booking[]>(path);
+      setBookings(Array.isArray(rows) ? rows : []);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // Only show the offline copy for genuine network failures
+      if (/network|failed to fetch|network request failed|ECONNREFUSED/i.test(msg)) {
+        setError(`Can't reach API at ${API_BASE}. Is npm run server running?`);
+      } else {
+        setError(msg);
+      }
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
 
-  // FR-24 — advance through the four stages; FR-28 — notify both parties
+  useEffect(() => { void load(); }, [load]);
+
   const advance = async (b: Booking) => {
     const next = STAGES[STAGES.indexOf(b.status) + 1];
     if (!next) return;
@@ -35,22 +59,40 @@ export default function Bookings() {
       await api.post('/notifications/booking-status', {
         clientId: b.clientId, decoratorId: b.decoratorId, eventType: b.eventType, status: next,
       }).catch(() => {});
-      load();
-    } catch {}
+      await load();
+    } catch { /* keep list */ }
   };
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScreenHeader title="My bookings" />
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        {error && <EmptyState icon="cloud-offline-outline" title="Backend offline" body="Start it with: npm run server." />}
-        {!error && bookings.length === 0 && (
-          <EmptyState icon="calendar-outline" title="No bookings yet"
-            body="Send a decorator a booking request from their profile." />
+        {loading && <SkeletonList count={3} />}
+
+        {!loading && error && (
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Couldn't load bookings"
+            body={error}
+          />
         )}
-        {bookings.map((b, i) => (
-          <Animated.View key={b.id} entering={FadeInDown.delay(i * 60).duration(400)}>
-            <View style={[styles.card, Shadow.card]}>
+        {!loading && error && (
+          <Button title="Try again" onPress={load} style={{ borderRadius: 24, marginTop: 8 }} />
+        )}
+
+        {!loading && !error && bookings.length === 0 && (
+          <EmptyState
+            icon="calendar-outline"
+            title="No bookings yet"
+            body={user
+              ? 'Send a decorator a booking request from their profile.'
+              : 'Sign in to see bookings tied to your account.'}
+          />
+        )}
+
+        {!loading && !error && bookings.map((b, i) => (
+          <Animated.View key={b.id} entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(350)}>
+            <GlassCard style={styles.card}>
               <View style={styles.head}>
                 <Text style={styles.name}>{b.decoratorName || 'Decorator'}</Text>
                 <View style={styles.statusTag}><Text style={styles.statusText}>{b.status}</Text></View>
@@ -60,7 +102,6 @@ export default function Bookings() {
               {!!b.budget && <Text style={styles.budget}>GH₵{b.budget}</Text>}
               {!!b.brief && <Text numberOfLines={2} style={styles.brief}>{b.brief}</Text>}
 
-              {/* Status stepper */}
               <View style={styles.stepper}>
                 {STAGES.map((s, si) => {
                   const done = si <= STAGES.indexOf(b.status);
@@ -87,9 +128,16 @@ export default function Bookings() {
                   onPress={() => router.push({ pathname: '/chat', params: { bookingId: b.id, name: b.decoratorName } })}
                   style={{ flex: 1, height: 44 }} />
               </View>
-            </View>
+            </GlassCard>
           </Animated.View>
         ))}
+
+        {!loading && (
+          <Pressable onPress={load} style={styles.refresh}>
+            <Ionicons name="refresh-outline" size={16} color={C.primary} />
+            <Text style={styles.refreshText}>Refresh</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -98,7 +146,7 @@ export default function Bookings() {
 const makeStyles = (C: Palette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
   body: { paddingHorizontal: 20, paddingBottom: 24, gap: 12 },
-  card: { backgroundColor: C.card, borderRadius: Radii.md, padding: 16, gap: 6 },
+  card: { borderRadius: Radii.md, padding: 16, gap: 6 },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   name: { ...Type.subtitle, color: C.text },
   statusTag: { backgroundColor: C.accentSoft, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
@@ -115,4 +163,6 @@ const makeStyles = (C: Palette) => StyleSheet.create({
   line: { flex: 1, height: 2, backgroundColor: C.cardMuted, marginTop: 9, marginHorizontal: -14 },
   lineDone: { backgroundColor: C.primary },
   stepLabel: { fontSize: 9, color: C.textLight, marginTop: 4, textAlign: 'center' },
+  refresh: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12 },
+  refreshText: { ...Type.caption, color: C.primary, fontWeight: '700' },
 });

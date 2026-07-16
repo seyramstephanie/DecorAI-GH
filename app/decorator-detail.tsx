@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../components/ui/Button';
 import { Pill } from '../components/ui/Chip';
@@ -26,6 +27,8 @@ export default function DecoratorDetail() {
   const [eventType, setEventType] = useState(EVENT_TYPES[0]);
   const [venue, setVenue] = useState('');
   const [eventDate, setEventDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [budget, setBudget] = useState('');
   const [brief, setBrief] = useState('');
   const [busy, setBusy] = useState(false);
@@ -35,6 +38,11 @@ export default function DecoratorDetail() {
   }, [id]);
 
   const attachedDesign = designId && variants.length > 0 ? variants[0] : null;
+  const formatDate = (date: Date) => date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const chooseDate = (_event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS !== 'ios') setShowDatePicker(false);
+    if (date) { setSelectedDate(date); setEventDate(formatDate(date)); }
+  };
 
   // FR-21/22 — send booking request with the AI design attached as the formal brief
   const send = async () => {
@@ -147,7 +155,17 @@ export default function DecoratorDetail() {
         </View>
 
         <TextInput style={styles.input} placeholder="Venue (e.g. Miklin Hotel, Kumasi)" placeholderTextColor={C.textLight} value={venue} onChangeText={setVenue} />
-        <TextInput style={styles.input} placeholder="Event date (e.g. 24 Dec 2026)" placeholderTextColor={C.textLight} value={eventDate} onChangeText={setEventDate} />
+        <Pressable style={styles.dateField} onPress={() => setShowDatePicker(true)}>
+          <Ionicons name="calendar-outline" size={19} color={C.primary} />
+          <Text style={[styles.dateText, !eventDate && styles.datePlaceholder]}>{eventDate || 'Select event date'}</Text>
+          <Ionicons name="chevron-forward" size={17} color={C.textLight} />
+        </Pressable>
+        {showDatePicker && (
+          <View style={styles.datePicker}>
+            <DateTimePicker value={selectedDate} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} minimumDate={new Date()} onChange={chooseDate} />
+            {Platform.OS === 'ios' && <Pressable style={styles.dateDone} onPress={() => setShowDatePicker(false)}><Text style={styles.dateDoneText}>Done</Text></Pressable>}
+          </View>
+        )}
         <TextInput style={styles.input} placeholder="Budget (GH₵)" placeholderTextColor={C.textLight} value={budget} onChangeText={setBudget} keyboardType="numeric" />
         <TextInput
           style={[styles.input, { minHeight: 80, textAlignVertical: 'top', paddingTop: 14 }]}
@@ -200,4 +218,13 @@ const makeStyles = (C: Palette) => StyleSheet.create({
     backgroundColor: C.card, borderRadius: Radii.sm, borderWidth: 1, borderColor: C.border,
     paddingHorizontal: 14, height: 52, ...Type.body, color: C.text,
   },
+  dateField: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: C.card,
+    borderRadius: Radii.sm, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, height: 52,
+  },
+  dateText: { ...Type.body, color: C.text, flex: 1 },
+  datePlaceholder: { color: C.textLight },
+  datePicker: { backgroundColor: C.card, borderRadius: Radii.sm, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
+  dateDone: { alignSelf: 'flex-end', marginRight: 14, marginBottom: 10, backgroundColor: C.accentSoft, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 7 },
+  dateDoneText: { fontSize: 12, fontWeight: '700', color: C.primary },
 });

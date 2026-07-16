@@ -16,7 +16,15 @@ export function ProductCard({ product, liked, onToggleLike, onPress }: Props) {
     <Pressable onPress={onPress} style={styles.wrap}>
       <View style={[styles.imageBox, Shadow.card]}>
         <Image source={{ uri: product.image }} style={styles.image} contentFit="cover" transition={250} />
-        <Pressable onPress={onToggleLike} hitSlop={10} style={styles.heart}>
+        <Pressable
+          onPress={(e) => {
+            // Prevent the outer card press from stealing the favourite toggle.
+            e?.stopPropagation?.();
+            onToggleLike();
+          }}
+          hitSlop={12}
+          style={styles.heart}
+        >
           <Ionicons
             name={liked ? 'heart' : 'heart-outline'}
             size={20}

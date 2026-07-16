@@ -17,8 +17,9 @@ export const PRODUCTS: Product[] = [
     image: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&q=80', shopId: 's3' },
   { id: 'p6', name: 'Abstract Framed Wall Art', price: 220, category: 'Popular',
     image: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=600&q=80', shopId: 's2' },
+  // Previous Unsplash id 404'd; use a stable bed photo
   { id: 'p7', name: 'Rattan King Bed Frame', price: 2150, category: 'Bed',
-    image: 'https://images.unsplash.com/photo-1505693416388-ac5aa068fe85?w=600&q=80', shopId: 's5' },
+    image: 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=600&q=80', shopId: 's5' },
   { id: 'p8', name: 'Round Marble Side Table', price: 340, category: 'Table',
     image: 'https://images.unsplash.com/photo-1499933374294-4584851497cc?w=600&q=80', shopId: 's5' },
 ];

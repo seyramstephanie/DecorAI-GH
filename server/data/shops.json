@@ -12,6 +12,7 @@
     "phone": "+233 24 111 2233",
     "verified": true,
     "radiusKm": 10,
+    "image": "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=800&q=80",
     "stock": [
       "fresh flowers",
       "floral arch",
@@ -34,6 +35,7 @@
     "phone": "+233 20 445 6677",
     "verified": true,
     "radiusKm": 15,
+    "image": "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80",
     "stock": [
       "drapes",
       "kente runners",
@@ -57,6 +59,7 @@
     "phone": "+233 54 889 0011",
     "verified": true,
     "radiusKm": 12,
+    "image": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800&q=80",
     "stock": [
       "sofa",
       "armchair",
@@ -79,6 +82,7 @@
     "phone": "+233 26 223 4455",
     "verified": true,
     "radiusKm": 20,
+    "image": "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80",
     "stock": [
       "string lights",
       "uplighting",
@@ -101,6 +105,7 @@
     "phone": "+233 30 990 8877",
     "verified": true,
     "radiusKm": 18,
+    "image": "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=800&q=80",
     "stock": [
       "balloons",
       "balloon arch",
@@ -125,12 +130,106 @@
     "phone": "+233 24 667 7889",
     "verified": true,
     "radiusKm": 25,
+    "image": "https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=800&q=80",
     "stock": [
       "canopy",
       "plastic chairs",
       "stage skirting",
       "drapes",
       "balloon columns"
+    ]
+  },
+  {
+    "id": "s7",
+    "name": "East Legon Interiors",
+    "category": "Furniture",
+    "area": "East Legon",
+    "location": "Accra",
+    "lat": 5.636,
+    "lng": -0.162,
+    "rating": 4.8,
+    "reviews": 156,
+    "phone": "+233 55 301 2244",
+    "verified": true,
+    "radiusKm": 15,
+    "image": "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=800&q=80",
+    "stock": [
+      "sofa",
+      "accent chair",
+      "bookshelf",
+      "rug",
+      "floor lamp",
+      "wall art",
+      "mirrors"
+    ]
+  },
+  {
+    "id": "s8",
+    "name": "Kumasi Craft Village",
+    "category": "Handicrafts",
+    "area": "Ash Town",
+    "location": "Kumasi",
+    "lat": 6.7,
+    "lng": -1.61,
+    "rating": 4.7,
+    "reviews": 98,
+    "phone": "+233 24 909 5566",
+    "verified": true,
+    "radiusKm": 12,
+    "image": "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=800&q=80",
+    "stock": [
+      "woven baskets",
+      "clay pots",
+      "wood carvings",
+      "beads",
+      "kente cloth",
+      "woven mats"
+    ]
+  },
+  {
+    "id": "s9",
+    "name": "Takoradi Beach Decor",
+    "category": "General Decor",
+    "area": "Beach Road",
+    "location": "Takoradi",
+    "lat": 4.8967,
+    "lng": -1.7554,
+    "rating": 4.5,
+    "reviews": 61,
+    "phone": "+233 26 411 7788",
+    "verified": true,
+    "radiusKm": 20,
+    "image": "https://images.unsplash.com/photo-1499933374294-4584851497cc?w=800&q=80",
+    "stock": [
+      "lanterns",
+      "vases",
+      "candles",
+      "side table",
+      "cushions",
+      "string lights"
+    ]
+  },
+  {
+    "id": "s10",
+    "name": "Cape Coast Canopies",
+    "category": "Event Rentals",
+    "area": "Kotokuraba",
+    "location": "Cape Coast",
+    "lat": 5.1053,
+    "lng": -1.2466,
+    "rating": 4.6,
+    "reviews": 74,
+    "phone": "+233 20 655 3311",
+    "verified": true,
+    "radiusKm": 30,
+    "image": "https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&q=80",
+    "stock": [
+      "canopy",
+      "chairs",
+      "stage",
+      "drapes",
+      "red carpet",
+      "balloon arch"
     ]
   }
 ]

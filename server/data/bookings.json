@@ -1,1 +1,45 @@
-[]
+[
+  {
+    "id": "b1",
+    "decoratorId": "d1",
+    "decoratorName": "Royal Touch Decor",
+    "clientId": "u1",
+    "clientName": "Seyram Dede",
+    "eventType": "Wedding",
+    "eventDate": "24 Dec 2026",
+    "venue": "Miklin Hotel, Kumasi",
+    "budget": "6000",
+    "brief": "[AI design attached] White & gold theme with floral arch and kente runners.",
+    "designImage": "attached-ai-design",
+    "status": "Confirmed",
+    "createdAt": "2026-07-01T10:00:00.000Z"
+  },
+  {
+    "id": "b2",
+    "decoratorId": "d3",
+    "decoratorName": "Serene Spaces",
+    "clientId": "u1",
+    "clientName": "Seyram Dede",
+    "eventType": "Home Interior",
+    "eventDate": "15 Aug 2026",
+    "venue": "Ahodwo, Kumasi",
+    "budget": "4500",
+    "brief": "Living room refresh — modern Ghanaian contemporary style.",
+    "status": "Enquiry",
+    "createdAt": "2026-07-08T15:30:00.000Z"
+  },
+  {
+    "id": "hsiixy8q",
+    "status": "Completed",
+    "createdAt": "2026-07-16T05:16:31.223Z",
+    "decoratorName": "Asante Events GH",
+    "decoratorId": "d2",
+    "clientId": "bvgt4yq3",
+    "clientName": "Google User",
+    "eventType": "Funeral",
+    "eventDate": "24 may 2027",
+    "venue": "Kumasi",
+    "budget": "5008",
+    "brief": ""
+  }
+]

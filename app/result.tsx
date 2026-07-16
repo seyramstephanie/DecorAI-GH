@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,11 +28,12 @@ export default function Result() {
   const [error, setError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [objType, setObjType] = useState(0);
+  const [saving, setSaving] = useState(false);
   const running = useRef(false);
 
   const MAX_VARIANTS = 3; // FR-12
 
-  const generate = async () => {
+  const generate = useCallback(async () => {
     if (!brief || running.current) return;
     running.current = true;
     setError(null);
@@ -51,9 +52,9 @@ export default function Result() {
       running.current = false;
       setStage(null);
     }
-  };
+  }, [brief, variants.length]);
 
-  useEffect(() => { if (brief && variants.length === 0) generate(); }, []);
+  useEffect(() => { if (brief && variants.length === 0) generate(); }, [brief, generate, variants.length]);
 
   if (!brief) {
     return (
@@ -70,13 +71,18 @@ export default function Result() {
   const shownItems = filteredItems.length ? filteredItems : current?.items ?? [];
 
   const save = () => {
-    if (!current) return;
+    if (!current || saving) return;
+    setSaving(true);
     actions.saveDesign({
       id: `${Date.now()}`, imageBase64: current.imageBase64, items: current.items,
       eventType: brief.eventType, style: brief.style, vision: brief.vision,
       createdAt: new Date().toISOString(),
     });
-    router.push('/saved');
+    // brief moment so the button shows feedback, then open saved grid
+    setTimeout(() => {
+      setSaving(false);
+      router.push('/saved');
+    }, 250);
   };
 
   return (
@@ -94,7 +100,7 @@ export default function Result() {
           <Pressable onPress={() => setIndex(Math.min(variants.length - 1, index + 1))} hitSlop={10}>
             <Ionicons name="arrow-forward" size={22} color={index >= variants.length - 1 ? C.textLight : C.text} />
           </Pressable>
-          <Pressable onPress={() => router.dismissTo('/home')} hitSlop={10}>
+          <Pressable onPress={() => router.replace('/home')} hitSlop={10}>
             <Ionicons name="close" size={24} color={C.text} />
           </Pressable>
         </View>
@@ -163,7 +169,7 @@ export default function Result() {
             disabled={!current || !!stage || variants.length >= MAX_VARIANTS}
             style={{ flex: 1, height: 46 }}
           />
-          <Button title="Save" variant="ghost" icon="bookmark-outline" onPress={save} disabled={!current} style={{ flex: 1, height: 46 }} />
+          <Button title={saving ? 'Saved' : 'Save'} variant="ghost" icon="heart-outline" onPress={save} loading={saving} disabled={!current} style={{ flex: 1, height: 46 }} />
           <Button
             title="Share" variant="ghost" icon="share-social-outline"
             onPress={() => Share.share({ message: `My DecorAI GH ${brief.eventType} design — ${brief.style} style. Items: ${current?.items.join(', ')}` })}

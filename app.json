@@ -60,7 +60,8 @@
         {
           "locationWhenInUsePermission": "DecorAI GH uses your location to show nearby decorators and guide you to them."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

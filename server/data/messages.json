@@ -14,5 +14,21 @@
     "from": "d1-user",
     "fromName": "Akosua Mensah",
     "text": "Yes! Send me the venue details."
+  },
+  {
+    "id": "p2wbnawi",
+    "bookingId": "dm_d1_bvgt4yq3",
+    "at": "2026-07-16T03:52:38.860Z",
+    "from": "bvgt4yq3",
+    "fromName": "Google User",
+    "text": "Hello"
+  },
+  {
+    "id": "jhyjn5yh",
+    "bookingId": "dm_d1_bvgt4yq3",
+    "at": "2026-07-16T05:03:48.646Z",
+    "from": "u2",
+    "fromName": "Akosua Mensah",
+    "text": "Hi"
   }
 ]

@@ -3,9 +3,72 @@
     "id": "n1",
     "userId": "all",
     "type": "digest",
-    "read": false,
+    "read": true,
     "at": "2026-07-12T04:55:03.713Z",
     "title": "Weekly Inspiration",
     "body": "New luxury wedding styles trending in Kumasi this week — tap to explore."
+  },
+  {
+    "id": "emwhws9q",
+    "userId": "decorator-d2",
+    "type": "brief",
+    "title": "New decoration brief received",
+    "body": "Google User sent you a Funeral brief with an AI design attached.",
+    "read": false,
+    "at": "2026-07-16T05:16:31.291Z"
+  },
+  {
+    "id": "80mwqtpx",
+    "userId": "bvgt4yq3",
+    "type": "booking",
+    "title": "Booking update",
+    "body": "Your Funeral booking is now Confirmed.",
+    "read": false,
+    "at": "2026-07-16T05:16:36.957Z"
+  },
+  {
+    "id": "do2fpg5f",
+    "userId": "decorator-d2",
+    "type": "booking",
+    "title": "Booking update",
+    "body": "Booking for Funeral is now Confirmed.",
+    "read": false,
+    "at": "2026-07-16T05:16:36.961Z"
+  },
+  {
+    "id": "9uuubsqg",
+    "userId": "bvgt4yq3",
+    "type": "booking",
+    "title": "Booking update",
+    "body": "Your Funeral booking is now In Preparation.",
+    "read": false,
+    "at": "2026-07-16T05:16:47.276Z"
+  },
+  {
+    "id": "tkny8r8j",
+    "userId": "decorator-d2",
+    "type": "booking",
+    "title": "Booking update",
+    "body": "Booking for Funeral is now In Preparation.",
+    "read": false,
+    "at": "2026-07-16T05:16:47.278Z"
+  },
+  {
+    "id": "a8lmd6pz",
+    "userId": "bvgt4yq3",
+    "type": "booking",
+    "title": "Booking update",
+    "body": "Your Funeral booking is now Completed.",
+    "read": false,
+    "at": "2026-07-16T05:16:48.886Z"
+  },
+  {
+    "id": "l8asep6r",
+    "userId": "decorator-d2",
+    "type": "booking",
+    "title": "Booking update",
+    "body": "Booking for Funeral is now Completed.",
+    "read": false,
+    "at": "2026-07-16T05:16:48.888Z"
   }
 ]

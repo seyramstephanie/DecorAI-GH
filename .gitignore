@@ -36,11 +36,15 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# Spring Boot
+backend/target/
+
 app-example
 
 # generated native folders
 /ios
 /android
+.expo/static-tmp/
 
 # Environment variables
 .env

@@ -1,18 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useSyncExternalStore } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BottomNav } from '../components/ui/BottomNav';
-import { Radii, Shadow, Type } from '../constants/theme';
+import { GlassCard, GlassToggleRow } from '../components/ui/Glass';
+import { Radii, Type } from '../constants/theme';
 import { Role, session } from '../lib/session';
 import { actions, useStore } from '../lib/store';
 import { Palette, useColors } from '../lib/theme';
 
-// Profile per settings UI reference: circular header buttons, profile card,
-// grouped rows (toggles + chevrons), red Log Out — in our system colors.
-const ROLE_LABELS: Record<Role, string> = { client: 'Client', decorator: 'Decorator', shop: 'Shop owner' };
-const NEXT_ROLE: Record<Role, Role> = { client: 'decorator', decorator: 'shop', shop: 'client' };
+const ROLE_LABELS: Record<Role, string> = {
+  client: 'Client',
+  decorator: 'Decorator',
+  shop: 'Shop owner',
+  admin: 'Admin',
+};
 
 export default function Profile() {
   const C = useColors();
@@ -20,10 +23,10 @@ export default function Profile() {
   const router = useRouter();
   const user = useSyncExternalStore(session.subscribe, () => session.user);
   const { prefs } = useStore();
+  const isPro = session.canUseAi();
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
-      {/* Header — circular back + menu buttons, centered title */}
       <View style={styles.header}>
         <Pressable onPress={() => router.replace('/home')} style={styles.circleBtn} hitSlop={8}>
           <Ionicons name="chevron-back" size={20} color={C.text} />
@@ -35,61 +38,88 @@ export default function Profile() {
       </View>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        {/* Profile card — avatar, name, email, chevron */}
-        <Pressable onPress={() => router.push('/account-settings')} style={[styles.card, Shadow.card, styles.profileCard]}>
-          {user?.avatar ? (
-            <Image source={{ uri: user.avatar }} style={styles.avatarImg} />
-          ) : (
-            <View style={styles.avatar}><Ionicons name="person" size={26} color={C.primary} /></View>
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{user?.name ?? 'Guest'}</Text>
-            <Text style={styles.meta}>{user?.email || 'Add your details'}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={C.textLight} />
+        <Pressable onPress={() => router.push('/account-settings')}>
+          <GlassCard isInteractive style={styles.profileCard}>
+            {user?.avatar ? (
+              <Image source={{ uri: user.avatar }} style={styles.avatarImg} />
+            ) : (
+              <View style={styles.avatar}><Ionicons name="person" size={26} color={C.primary} /></View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name}>{user?.name ?? 'Guest'}</Text>
+              <Text style={styles.meta}>{user?.email || 'Add your details'}</Text>
+              <Text style={styles.planTag}>{isPro ? 'Pro · AI unlocked' : 'Free · Browse & chat'}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={C.textLight} />
+          </GlassCard>
         </Pressable>
 
-        {/* Group 1 — toggles + account rows */}
-        <View style={[styles.card, Shadow.card, styles.group]}>
-          <Row label="Dark Mode">
-            <Switch
-              value={prefs.darkMode}
-              onValueChange={(v) => actions.setPref('darkMode', v)}
-              trackColor={{ false: C.border, true: C.primary }}
-              thumbColor={C.white}
-            />
-          </Row>
-          <Row label="Notifications">
-            <Switch
-              value={prefs.notifications}
-              onValueChange={(v) => actions.setPref('notifications', v)}
-              trackColor={{ false: C.border, true: C.primary }}
-              thumbColor={C.white}
-            />
-          </Row>
-          <Row label="Messages" onPress={() => router.push('/messages')} chevron />
-          <Row label="Account Settings" onPress={() => router.push('/account-settings')} chevron />
-          <Row label="My Bookings" onPress={() => router.push('/bookings')} chevron last={user?.role !== 'shop'} />
-          {user?.role === 'shop' && (
-            <Row label="My Shop Dashboard" onPress={() => router.push('/shop-dashboard')} chevron last />
-          )}
-        </View>
-
-        {/* Group 2 — preferences + sign out */}
-        <View style={[styles.card, Shadow.card, styles.group]}>
-          <Row
-            label="Role"
-            value={ROLE_LABELS[user?.role ?? 'client']}
-            onPress={() => user && session.set({ ...user, role: NEXT_ROLE[user.role] })}
-            chevron
+        <GlassCard style={styles.group}>
+          <GlassToggleRow
+            label="Dark Mode"
+            value={prefs.darkMode}
+            onValueChange={(v) => actions.setPref('darkMode', v)}
           />
+          <GlassToggleRow
+            label="Notifications"
+            value={prefs.notifications}
+            onValueChange={(v) => actions.setPref('notifications', v)}
+            last
+          />
+        </GlassCard>
+
+        <GlassCard style={styles.group}>
+          {(() => {
+            const role = user?.role;
+            const hasBookings = role === 'client';
+            const hasUpgrade = role === 'client' && !isPro;
+            const hasShop = role === 'shop';
+            const hasDecorator = role === 'decorator';
+            const hasAdmin = role === 'admin';
+            const hasExtra = hasBookings || hasShop || hasDecorator || hasAdmin;
+            return (
+              <>
+                <Row label="Messages" onPress={() => router.push('/messages')} chevron />
+                <Row
+                  label="Account Settings"
+                  onPress={() => router.push('/account-settings')}
+                  chevron
+                  last={!hasExtra}
+                />
+                {hasBookings && (
+                  <Row
+                    label="My Bookings"
+                    onPress={() => router.push('/bookings')}
+                    chevron
+                    last={!hasUpgrade}
+                  />
+                )}
+                {hasUpgrade && (
+                  <Row label="Upgrade to Pro" value="AI" onPress={() => router.push('/pro' as any)} chevron last />
+                )}
+                {hasShop && (
+                  <Row label="My Shop Dashboard" onPress={() => router.push('/shop-dashboard')} chevron last />
+                )}
+                {hasDecorator && (
+                  <Row label="My Decorator Studio" onPress={() => router.push('/decorator-dashboard')} chevron last />
+                )}
+                {hasAdmin && (
+                  <Row label="Admin console" onPress={() => router.push('/admin' as any)} chevron last />
+                )}
+              </>
+            );
+          })()}
+        </GlassCard>
+
+        <GlassCard style={styles.group}>
+          <Row label="Account type" value={ROLE_LABELS[user?.role ?? 'client']} />
           <Row label="Saved Designs" onPress={() => router.push('/saved')} chevron />
           <Row label="Help & Support" onPress={() => router.push('/notification')} chevron />
           <Row
             label="Log Out" danger chevron last
             onPress={() => { session.set(null); router.replace('/onboarding'); }}
           />
-        </View>
+        </GlassCard>
       </ScrollView>
       <BottomNav />
     </SafeAreaView>
@@ -123,8 +153,7 @@ const makeStyles = (C: Palette) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: { ...Type.title, color: C.text },
-  body: { paddingHorizontal: 20, paddingBottom: 24, gap: 16 },
-  card: { backgroundColor: C.card, borderRadius: Radii.lg },
+  body: { paddingHorizontal: 20, paddingBottom: 24, gap: 14 },
   profileCard: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
   avatar: {
     width: 54, height: 54, borderRadius: 27, backgroundColor: C.accentSoft,
@@ -133,9 +162,10 @@ const makeStyles = (C: Palette) => StyleSheet.create({
   avatarImg: { width: 54, height: 54, borderRadius: 27 },
   name: { ...Type.subtitle, color: C.text },
   meta: { ...Type.caption, color: C.textMuted, marginTop: 2 },
-  group: { paddingHorizontal: 16 },
+  planTag: { ...Type.caption, color: C.primary, fontWeight: '700', marginTop: 4 },
+  group: { paddingHorizontal: 16, paddingBottom: 4, borderRadius: Radii.lg },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 15, minHeight: 54 },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
+  rowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
   rowLabel: { ...Type.body, fontSize: 15, fontWeight: '600', color: C.text, flex: 1 },
   rowValue: { ...Type.body, fontSize: 14, color: C.textMuted },
 });
