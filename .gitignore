@@ -39,6 +39,9 @@ yarn-error.*
 # Spring Boot
 backend/target/
 
+# Local portable Maven (do not commit)
+tools/
+
 app-example
 
 # generated native folders
