@@ -16,6 +16,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -124,20 +125,27 @@ public class DecorAiController {
       "insert into password_resets (id,email,code,expires_at) values (?,?,?,?)",
       resetId, email, code, OffsetDateTime.now().plusMinutes(20)
     );
+
+    // Real email first (Gmail SMTP via direct sockets). Only surface code if send fails.
     String mailError = sendResetEmail(email, code);
     boolean mailed = mailError == null;
-    notify(userId, "digest", "Password reset code",
-      mailed
-        ? ("We emailed a 6-digit code to " + email + ". It expires in 20 minutes.")
-        : ("Your reset code is " + code + " (email delivery failed: " + mailError + "). It expires in 20 minutes."));
+
+    try {
+      notify(userId, "digest", "Password reset code",
+        mailed
+          ? ("We emailed a 6-digit code to " + email + ". It expires in 20 minutes.")
+          : ("Email failed (" + mailError + "). Your code is " + code + " — enter it on Forgot password."));
+    } catch (Exception notifyErr) {
+      System.err.println("[notify] failed after reset: " + notifyErr.getMessage());
+    }
+
     Map<String, Object> out = map(
       "ok", true,
       "mailed", mailed,
       "message", mailed
         ? "Check your email (and spam) for a 6-digit code. It expires in 20 minutes."
-        : ("Email could not be sent (" + mailError + "). Use the code shown below.")
+        : ("Could not send email: " + mailError + ". Use the code shown in the app.")
     );
-    // Always include code when mail fails so the user can still reset
     if (!mailed) out.put("devCode", code);
     return out;
   }
@@ -689,6 +697,7 @@ public class DecorAiController {
 
   /**
    * Sends reset code via Gmail SMTP.
+   * Tries port 587 (STARTTLS) then 465 (SSL). Disables SOCKS/HTTP proxy for the socket.
    * @return null on success, or a short error string for the client / logs
    */
   private String sendResetEmail(String email, String code) {
@@ -702,14 +711,17 @@ public class DecorAiController {
       System.err.println("[mail] MAIL_PASSWORD empty");
       return "MAIL_PASSWORD is empty in .env";
     }
-    if (password.length() != 16) {
-      System.err.println("[mail] MAIL_PASSWORD length=" + password.length() + " (Gmail App Passwords are 16 chars)");
-    }
+
+    // Clear JVM SOCKS/HTTP proxy for this send — logs showed SocksSocketImpl + connect timeout
+    String prevSocksHost = System.getProperty("socksProxyHost");
+    String prevSocksPort = System.getProperty("socksProxyPort");
+    String prevHttpProxy = System.getProperty("http.proxyHost");
+    String prevHttpsProxy = System.getProperty("https.proxyHost");
     try {
-      // Always build a fresh sender so credentials match the latest .env
-      org.springframework.mail.javamail.JavaMailSenderImpl sender = MailConfig.createSender();
-      sender.setUsername(username);
-      sender.setPassword(password);
+      System.clearProperty("socksProxyHost");
+      System.clearProperty("socksProxyPort");
+      System.clearProperty("http.proxyHost");
+      System.clearProperty("https.proxyHost");
 
       SimpleMailMessage message = new SimpleMailMessage();
       message.setTo(email);
@@ -724,26 +736,53 @@ public class DecorAiController {
           + "If you did not request a reset, you can ignore this email.\n\n"
           + "DecorAI GH\n"
       );
-      sender.send(message);
-      System.out.println("[mail] Reset code sent to " + email + " via " + username);
-      return null;
-    } catch (Exception e) {
-      Throwable root = e;
-      while (root.getCause() != null && root.getCause() != root) root = root.getCause();
-      String detail = root.getMessage() != null ? root.getMessage() : e.getMessage();
+
+      Exception last = null;
+      // 587 STARTTLS first, then 465 SSL (some networks only allow one)
+      for (int[] attempt : new int[][]{{587, 0}, {465, 1}}) {
+        int port = attempt[0];
+        boolean ssl = attempt[1] == 1;
+        try {
+          org.springframework.mail.javamail.JavaMailSenderImpl sender = MailConfig.createSender(port, ssl);
+          sender.setUsername(username);
+          sender.setPassword(password);
+          sender.send(message);
+          System.out.println("[mail] Reset code sent to " + email + " via " + username + " port " + port);
+          return null;
+        } catch (Exception e) {
+          last = e;
+          System.err.println("[mail] port " + port + " failed: " + rootMessage(e));
+        }
+      }
+      String detail = rootMessage(last);
       System.err.println("[mail] Failed to send to " + email + ": " + detail);
-      e.printStackTrace(System.err);
-      // Friendly hints for common Gmail failures
-      String lower = detail == null ? "" : detail.toLowerCase(Locale.ROOT);
+      String lower = detail.toLowerCase(Locale.ROOT);
       if (lower.contains("authentication") || lower.contains("username and password") || lower.contains("535")) {
-        return "Gmail rejected login — use a 16-char App Password (not your normal password). "
-          + "Google Account → Security → 2-Step Verification → App passwords.";
+        return "Gmail rejected login — use a 16-char App Password (Google Account → Security → App passwords).";
       }
-      if (lower.contains("timed out") || lower.contains("connect")) {
-        return "Could not reach smtp.gmail.com:587 (network/firewall).";
+      if (lower.contains("timed out") || lower.contains("connect") || lower.contains("unreachable")) {
+        return "Network blocked SMTP to Gmail (ports 587/465). Use the on-screen code, or allow outbound SMTP / try another network.";
       }
-      return detail != null ? detail : "SMTP send failed";
+      return detail.isBlank() ? "SMTP send failed" : detail;
+    } finally {
+      restoreProp("socksProxyHost", prevSocksHost);
+      restoreProp("socksProxyPort", prevSocksPort);
+      restoreProp("http.proxyHost", prevHttpProxy);
+      restoreProp("https.proxyHost", prevHttpsProxy);
     }
+  }
+
+  private static String rootMessage(Throwable e) {
+    if (e == null) return "";
+    Throwable root = e;
+    while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+    String m = root.getMessage();
+    return m != null ? m : String.valueOf(e);
+  }
+
+  private static void restoreProp(String key, String value) {
+    if (value == null) System.clearProperty(key);
+    else System.setProperty(key, value);
   }
 
   private static String firstName(String name) {

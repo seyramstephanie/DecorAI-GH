@@ -62,6 +62,9 @@ if (-not $env:JAVA_HOME) {
 $mvn = Find-Mvn
 if ($mvn) {
   Write-Host "Using Maven: $mvn"
+  Write-Host "Working directory: $root (so root .env is found)"
+  # Avoid JVM SOCKS proxy issues that block smtp.gmail.com from Java
+  $env:JAVA_TOOL_OPTIONS = (($env:JAVA_TOOL_OPTIONS + " -Djava.net.useSystemProxies=false -DsocksProxyHost= -DsocksProxyPort=") -replace '\s+', ' ').Trim()
   & $mvn -f (Join-Path $root "backend\pom.xml") spring-boot:run
   exit $LASTEXITCODE
 }

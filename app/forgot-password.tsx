@@ -11,7 +11,7 @@ import { Palette, useColors } from '../lib/theme';
 
 const emailValid = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
-/** Gmail app-password flow — MAIL_USERNAME + MAIL_PASSWORD on the API. */
+/** Password reset via Gmail SMTP on the API (MAIL_USERNAME + App Password). */
 export default function ForgotPassword() {
   const C = useColors();
   const styles = useMemo(() => makeStyles(C), [C]);
@@ -37,17 +37,20 @@ export default function ForgotPassword() {
       );
       setStep('code');
       setHint(res.message || 'Check your email for a 6-digit code.');
-      if (res.devCode) {
-        setCode(res.devCode);
-        Alert.alert(
-          res.mailed === false ? 'Email failed — use this code' : 'Reset code',
-          `${res.message}\n\nYour code: ${res.devCode}\n\n(Check the API window log for [mail] details.)`,
-        );
-      } else {
+      if (res.mailed !== false && !res.devCode) {
         Alert.alert(
           'Check your inbox',
-          `${res.message}\n\nAlso check spam. Open Notifications in the app for a copy of the alert.`,
+          `${res.message}\n\nAlso check spam. A notice was added to Notifications.`,
         );
+      } else if (res.devCode) {
+        // Only if SMTP failed — still allow reset
+        setCode(res.devCode);
+        Alert.alert(
+          'Email could not be delivered',
+          `${res.message}\n\nTemporary code (use now):\n${res.devCode}`,
+        );
+      } else {
+        Alert.alert('Reset code', res.message);
       }
     } catch (e: unknown) {
       Alert.alert('Could not send', String((e as Error).message));
@@ -78,7 +81,7 @@ export default function ForgotPassword() {
       });
       Alert.alert(
         'Password updated',
-        'You can sign in with your new password. A confirmation was also added to Notifications.',
+        'You can sign in with your new password.',
         [{ text: 'Sign in', onPress: () => router.replace('/create-account') }],
       );
     } catch (e: unknown) {
@@ -94,7 +97,7 @@ export default function ForgotPassword() {
       <ScreenHeader title="Forgot password" />
       <View style={styles.body}>
         <Text style={styles.lead}>
-          Enter your account email. We’ll send a 6-digit code to your inbox (Gmail) and log a message in Notifications.
+          Enter your account email. We will send a 6-digit code to that inbox via Gmail.
         </Text>
         <Field
           label="Account email"
@@ -108,7 +111,7 @@ export default function ForgotPassword() {
           <>
             {!!hint && <Text style={styles.hint}>{hint}</Text>}
             <Field
-              label="Reset code"
+              label="Reset code from email"
               value={code}
               onChangeText={setCode}
               placeholder="6-digit code"
@@ -131,14 +134,14 @@ export default function ForgotPassword() {
           </>
         )}
         <Button
-          title={step === 'email' ? 'Send reset code' : 'Update password'}
+          title={step === 'email' ? 'Send code to email' : 'Update password'}
           loading={busy}
           onPress={step === 'email' ? sendCode : reset}
           style={{ marginTop: 24, borderRadius: 28 }}
         />
         {step === 'code' && (
           <Button
-            title="Resend code"
+            title="Resend email"
             variant="ghost"
             loading={busy}
             onPress={sendCode}

@@ -16,7 +16,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @SpringBootApplication
 public class DecorAiApplication {
   public static void main(String[] args) {
-    // Root .env → system properties so spring.mail.* and ${MAIL_*} resolve
+    // Disable system / SOCKS proxies so Gmail SMTP and Neon JDBC use direct sockets
+    System.setProperty("java.net.useSystemProxies", "false");
+    System.clearProperty("socksProxyHost");
+    System.clearProperty("socksProxyPort");
+    System.clearProperty("http.proxyHost");
+    System.clearProperty("https.proxyHost");
+    // Root .env → system properties so MAIL_* / DATABASE_URL resolve
     DotEnv.loadIntoSystemProperties();
     SpringApplication.run(DecorAiApplication.class, args);
   }
@@ -25,15 +31,31 @@ public class DecorAiApplication {
   DataSource dataSource(Environment environment) {
     String databaseUrl = environment.getProperty("DATABASE_URL", "");
     if (databaseUrl.isBlank()) databaseUrl = DotEnv.get("DATABASE_URL");
+    // Prefer pooled URL if provided separately
+    String pooled = environment.getProperty("DATABASE_URL_POOLED", "");
+    if (pooled.isBlank()) pooled = DotEnv.get("DATABASE_URL_POOLED");
+    if (!pooled.isBlank()) databaseUrl = pooled;
     if (databaseUrl.isBlank()) {
       throw new IllegalStateException(
-        "DATABASE_URL is required. Add the Neon Postgres URL to root .env or your environment."
+        "DATABASE_URL is required. Add the Neon Postgres URL to root .env (Console → Connect)."
       );
     }
+    // Neon: use PgBouncer pooler hostname for Spring/Hikari apps
+    // https://neon.com/docs/connect/connection-pooling
+    databaseUrl = ensureNeonPooler(databaseUrl);
+    System.out.println("[neon] JDBC host=" + hostOf(databaseUrl));
+
     HikariDataSource dataSource = new HikariDataSource();
     dataSource.setMaximumPoolSize(5);
     dataSource.setMinimumIdle(1);
     dataSource.setPoolName("decorai-neon");
+    // Neon closes idle TCP; recycle before that (see Neon Hikari guidance)
+    dataSource.setMaxLifetime(180_000);   // 3 min
+    dataSource.setIdleTimeout(60_000);
+    dataSource.setKeepaliveTime(30_000);
+    dataSource.setConnectionTimeout(20_000);
+    dataSource.setValidationTimeout(5_000);
+    dataSource.setConnectionTestQuery("SELECT 1");
     if (databaseUrl.startsWith("jdbc:")) {
       dataSource.setJdbcUrl(databaseUrl);
       dataSource.setUsername(environment.getProperty("DATABASE_USERNAME", ""));
@@ -57,6 +79,26 @@ public class DecorAiApplication {
     dataSource.setUsername(credentials.length > 0 ? credentials[0] : "");
     dataSource.setPassword(credentials.length > 1 ? credentials[1] : "");
     return dataSource;
+  }
+
+  /** Insert -pooler into Neon endpoint host if missing. */
+  static String ensureNeonPooler(String url) {
+    if (url == null || url.isBlank()) return url;
+    if (url.contains("-pooler.")) return url;
+    // ep-xxx.region.aws.neon.tech → ep-xxx-pooler.region.aws.neon.tech
+    if (url.contains(".neon.tech")) {
+      return url.replaceFirst("@(ep-[a-z0-9-]+)\\.", "@$1-pooler.");
+    }
+    return url;
+  }
+
+  private static String hostOf(String url) {
+    try {
+      String u = url.startsWith("jdbc:") ? url.substring(5) : url;
+      return URI.create(u).getHost();
+    } catch (Exception e) {
+      return "(unknown)";
+    }
   }
 
   @Configuration

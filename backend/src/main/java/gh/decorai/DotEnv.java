@@ -10,11 +10,11 @@ import java.util.Map;
  * Loads root project .env reliably no matter whether the JVM cwd is
  * project root or backend/.
  */
-final class DotEnv {
+public final class DotEnv {
   private DotEnv() {}
 
   /** Call once before SpringApplication.run. Does not overwrite real OS env vars. */
-  static void loadIntoSystemProperties() {
+  public static void loadIntoSystemProperties() {
     Map<String, String> values = readAll();
     System.out.println("[env] Loaded " + values.size() + " keys from .env (cwd=" + Path.of("").toAbsolutePath() + ")");
     for (Map.Entry<String, String> e : values.entrySet()) {
@@ -34,7 +34,7 @@ final class DotEnv {
     );
   }
 
-  static String get(String key) {
+  public static String get(String key) {
     String fromEnv = System.getenv(key);
     if (fromEnv != null && !fromEnv.isBlank()) {
       return normalize(key, fromEnv);
