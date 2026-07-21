@@ -27,20 +27,21 @@ $serverArgs = @(
 Start-Process -FilePath "powershell.exe" -ArgumentList $serverArgs | Out-Null
 Write-Host "[1/3] API starting in a new window (port 4000)..."
 
-# Wait until API port is open (or timeout ~2 min)
+# Wait until API port is open (or timeout ~2 min). Use TcpClient — quieter than Test-NetConnection.
 $apiReady = $false
 for ($i = 0; $i -lt 60; $i++) {
   Start-Sleep -Seconds 2
   try {
-    $tcp = Test-NetConnection -ComputerName "127.0.0.1" -Port 4000 -WarningAction SilentlyContinue
-    if ($tcp.TcpTestSucceeded) {
-      $apiReady = $true
-      break
-    }
+    $client = New-Object System.Net.Sockets.TcpClient
+    $iar = $client.BeginConnect("127.0.0.1", 4000, $null, $null)
+    $ok = $iar.AsyncWaitHandle.WaitOne(800, $false)
+    if ($ok -and $client.Connected) { $apiReady = $true }
+    $client.Close()
+    if ($apiReady) { break }
   } catch {
     # keep waiting
   }
-  $waited = $i * 2
+  $waited = ($i + 1) * 2
   Write-Host ("  waiting for API... ({0}s)" -f $waited)
 }
 
@@ -80,6 +81,27 @@ Write-Host "[3/3] Starting Expo (cleared cache)..."
 Write-Host "  Press Ctrl+C here to stop Expo only."
 Write-Host "  Close the other two windows to stop API / ngrok."
 Write-Host ""
+
+# Free Metro default port if a previous Expo is still holding it
+foreach ($port in 8081, 8082) {
+  try {
+    Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue |
+      ForEach-Object {
+        Write-Host ("  freeing port {0} (PID {1})" -f $port, $_.OwningProcess)
+        Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+      }
+  } catch { }
+}
+
+# Guard: expo-sharing is a JS library, NOT an Expo config plugin (must not be in app.json plugins)
+$appJsonPath = Join-Path $root "app.json"
+if (Test-Path $appJsonPath) {
+  $raw = Get-Content -LiteralPath $appJsonPath -Raw
+  if ($raw -match '"expo-sharing"') {
+    Write-Host "ERROR: app.json still lists expo-sharing as a plugin. Remove it and retry." -ForegroundColor Red
+    exit 1
+  }
+}
 
 # --- 3) Expo in this window (foreground) ---
 & npx expo start -c

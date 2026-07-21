@@ -4,10 +4,15 @@
     "slug": "DecorAI-GH",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "decoraigh",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0B0B"
+    },
     "ios": {
       "supportsTablet": true,
       "config": {
@@ -16,10 +21,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#0B0B0B",
+        "foregroundImage": "./assets/images/logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -31,19 +34,20 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/logo.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/logo.png",
+          "imageWidth": 240,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#0B0B0B",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#0B0B0B",
+            "image": "./assets/images/logo.png"
           }
         }
       ],
@@ -53,6 +57,14 @@
           "cameraPermission": "DecorAI GH needs camera access to photograph your space for AI decoration previews.",
           "microphonePermission": false,
           "photosPermission": "DecorAI GH needs photo library access to upload your space photos."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "DecorAI GH saves your AI decoration designs to your photo library.",
+          "savePhotosPermission": "DecorAI GH saves finished designs to your camera roll.",
+          "isAccessMediaLocationEnabled": false
         }
       ],
       [

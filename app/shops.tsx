@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BottomNav } from '../components/ui/BottomNav';
+import { BottomNavSpacer } from '../components/ui/BottomNav';
 import { Glass, GlassCard, GlassPill } from '../components/ui/Glass';
 import { EmptyState } from '../components/ui/ScreenHeader';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -292,7 +292,7 @@ export default function Shops() {
           </>
         )}
       </ScrollView>
-      <BottomNav />
+      <BottomNavSpacer />
     </SafeAreaView>
   );
 }

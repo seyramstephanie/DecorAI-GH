@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BrandLogo } from '../components/ui/BrandLogo';
 import { Button } from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { Glass, GlassOption } from '../components/ui/Glass';
@@ -40,8 +41,16 @@ export default function Auth() {
   const [stock, setStock] = useState('vases, cushions, drapes');
   const [busy, setBusy] = useState(false);
 
-  const enter = (user: User, opts?: { welcome?: boolean; isNew?: boolean }) => {
-    session.set(user);
+  const goHome = (user: User) => {
+    if (user.role === 'admin') router.replace('/admin' as any);
+    else if (user.role === 'decorator') router.replace('/decorator-dashboard');
+    else if (user.role === 'shop') router.replace('/shop-dashboard');
+    else router.replace('/home');
+  };
+
+  const enter = async (user: User, opts?: { welcome?: boolean; isNew?: boolean }) => {
+    // Await disk write so a reload immediately after login still finds the session
+    await session.set(user);
     if (opts?.welcome || opts?.isNew) {
       Alert.alert(
         'Welcome to DecorAI GH',
@@ -52,23 +61,12 @@ export default function Auth() {
             : 'Your account is ready. Open the bell icon to see your welcome message.',
         [
           { text: 'View notifications', onPress: () => router.replace('/notification' as any) },
-          {
-            text: 'Continue',
-            onPress: () => {
-              if (user.role === 'admin') router.replace('/admin' as any);
-              else if (user.role === 'decorator') router.replace('/decorator-dashboard');
-              else if (user.role === 'shop') router.replace('/shop-dashboard');
-              else router.replace('/home');
-            },
-          },
+          { text: 'Continue', onPress: () => goHome(user) },
         ],
       );
       return;
     }
-    if (user.role === 'admin') router.replace('/admin' as any);
-    else if (user.role === 'decorator') router.replace('/decorator-dashboard');
-    else if (user.role === 'shop') router.replace('/shop-dashboard');
-    else router.replace('/home');
+    goHome(user);
   };
 
   const parseError = (e: unknown) => {
@@ -175,10 +173,10 @@ export default function Auth() {
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <View style={styles.logoWrap}>
-          <View style={styles.logoMark}><Ionicons name="sparkles" size={26} color={C.onPrimary} /></View>
-          <Text style={styles.logoName}>DecorAI GH</Text>
-        </View>
+        <BrandLogo size={108} style={styles.logo} />
+        <Text style={styles.tagline}>
+          {mode === 'login' ? 'Welcome back' : 'Create your account'}
+        </Text>
 
         <Pressable
           onPress={google}
@@ -278,12 +276,18 @@ export default function Auth() {
 const makeStyles = (C: Palette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
   body: { paddingHorizontal: 24, paddingBottom: 48 },
-  logoWrap: { alignItems: 'center', marginTop: 18, marginBottom: 28, gap: 10 },
-  logoMark: {
-    width: 54, height: 54, borderRadius: 18, backgroundColor: C.primary,
-    alignItems: 'center', justifyContent: 'center',
+  logo: {
+    alignSelf: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+    backgroundColor: 'transparent',
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  logoName: { fontSize: 28, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
+  tagline: {
+    ...Type.subtitle, color: C.textMuted, fontWeight: '600',
+    textAlign: 'center', marginBottom: 22,
+  },
   socialBtn: {
     flexDirection: 'row', alignItems: 'center',
     borderRadius: 28, height: 56, paddingHorizontal: 20, overflow: 'hidden',

@@ -6,6 +6,7 @@ import Animated, {
   interpolate, useAnimatedRef, useAnimatedStyle, useScrollViewOffset,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BrandLogo } from '../components/ui/BrandLogo';
 import { Shadow, Type } from '../constants/theme';
 import { Palette, useColors } from '../lib/theme';
 
@@ -56,10 +57,9 @@ export default function Onboarding() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      {/* Logo row — per reference, wordmark centered at the top */}
+      {/* Logo alone (no box) + Skip */}
       <View style={styles.logoRow}>
-        <View style={styles.logoMark}><Ionicons name="sparkles" size={15} color={C.onPrimary} /></View>
-        <Text style={styles.logoName}>DecorAI GH</Text>
+        <BrandLogo size={48} style={styles.logo} />
         <Pressable onPress={skip} style={styles.skip} hitSlop={10}>
           <Text style={styles.skipText}>Skip</Text>
         </Pressable>
@@ -195,13 +195,16 @@ function Dot({ index, offset }: { index: number; offset: { value: number } }) {
 
 const makeStyles = (C: Palette) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg, justifyContent: 'space-between', paddingVertical: 14 },
-  logoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 40 },
-  logoMark: {
-    width: 26, height: 26, borderRadius: 9, backgroundColor: C.primary,
-    alignItems: 'center', justifyContent: 'center',
+  logoRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 16, minHeight: 56, marginBottom: 4, position: 'relative',
   },
-  logoName: { fontSize: 18, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
-  skip: { position: 'absolute', right: 24 },
+  logo: {
+    backgroundColor: 'transparent',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  skip: { position: 'absolute', right: 20, paddingVertical: 8, paddingHorizontal: 4 },
   skipText: { ...Type.body, fontWeight: '600', color: C.textMuted },
   heroArea: { height: 320, justifyContent: 'center', marginTop: 8, marginBottom: 22 },
   title: {

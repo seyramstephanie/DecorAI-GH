@@ -1,5 +1,8 @@
 server:
   port: ${PORT:4000}
+  error:
+    include-message: always
+    include-binding-errors: always
 spring:
   application:
     name: decorai-api
@@ -28,7 +31,9 @@ decorai:
   architecture: modular-microservices
 
 # Paste only secrets into root .env — never commit them.
-# GEMINI_API_KEY=...          # Google AI Studio — enables /ai/decorate
+# OPENROUTER_API_KEY=sk-or-v1-...              # required for AI decorate
+# GEMINI_IMAGE_MODEL=google/gemini-2.5-flash-image
+# GEMINI_VISION_MODEL=google/gemini-2.5-flash
 # DATABASE_URL=postgresql://...@ep-xxx-pooler....neon.tech/neondb?sslmode=require
 # PAYSTACK_SECRET_KEY=sk_test_...
 # MAIL_USERNAME=your@gmail.com

@@ -6,7 +6,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AiBubble } from '../components/ui/AiBubble';
-import { BottomNav } from '../components/ui/BottomNav';
+import { BottomNavSpacer } from '../components/ui/BottomNav';
 import { CategoryChip } from '../components/ui/Chip';
 import { Glass } from '../components/ui/Glass';
 import { ProductCard } from '../components/ui/ProductCard';
@@ -176,7 +176,7 @@ export default function Home() {
         }
       />
       <AiBubble onPress={() => router.push('/generate')} />
-      <BottomNav />
+      <BottomNavSpacer />
     </SafeAreaView>
   );
 }

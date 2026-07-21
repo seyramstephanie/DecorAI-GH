@@ -21,22 +21,35 @@ Each domain is isolated in packages so they can later run as separate processes.
 
 ## AI decorate pipeline (space → finished design)
 
-| Step | Service role | Model |
-|------|----------------|-------|
-| 1 Analyse | Structure + placement zones | gemini-2.5-flash |
-| 2 Generate | Photoreal finished design (same camera) | gemini-2.5-flash-image |
-| 3 Verify | Structure preservation QC | gemini-2.5-flash |
-| 4 Identify | Ghana shop items | gemini-2.5-flash |
+**This is an image product, not a chatbot.** The paid image model does the decoration.
 
-System prompts live in `gh.decorai.ai.SystemPrompts`.
+| Step | Service role | Model (via OpenRouter) | Billing |
+|------|----------------|-------|---------|
+| 1 Analyse (optional) | Structure + placement zones | google/gemini-2.5-flash | OpenRouter credits (soft-fail) |
+| 2 **Generate (core)** | Photoreal finished design (same camera) | **google/gemini-2.5-flash-image** | **~$0.039 / image via OpenRouter** |
+| 3 Verify (optional) | Structure preservation QC | google/gemini-2.5-flash | soft-fail |
+| 4 Identify (optional) | Ghana shop items | google/gemini-2.5-flash | soft-fail |
+
+All AI traffic goes through **OpenRouter** (`OPENROUTER_API_KEY`). No direct Gemini API key.  
+System prompts + guardrails: `gh.decorai.ai.SystemPrompts`.
+
+### Image prompt style (Gemini 2.5 Flash Image)
+
+Generation uses Google’s recommended **narrative** edit template (full sentences, not keywords):
+
+> “Using the provided image of [space], redesign and decorate… Keep architecture… photorealistic…”
+
+See: [How to prompt Gemini 2.5 Flash Image](https://developers.googleblog.com/en/how-to-prompt-gemini-2-5-flash-image-generation-for-the-best-results/).
 
 ## Keys (root `.env`)
 
 ```env
-# Required for AI decorate
-GEMINI_API_KEY=your_google_ai_studio_key
-# or legacy client name still accepted:
-# EXPO_PUBLIC_GEMINI_API_KEY=...
+# Required — OpenRouter credits (Gemini models still used under the hood)
+OPENROUTER_API_KEY=sk-or-v1-...
+# Default decorate model on OpenRouter (~$0.039 / design)
+GEMINI_IMAGE_MODEL=google/gemini-2.5-flash-image
+# Optional vision helper:
+# GEMINI_VISION_MODEL=google/gemini-2.5-flash
 
 DATABASE_URL=postgresql://...@ep-xxx-pooler....neon.tech/neondb?sslmode=require
 MAIL_USERNAME=...
@@ -52,4 +65,4 @@ GET http://127.0.0.1:4000/ai/status
 POST http://127.0.0.1:4000/ai/decorate
 ```
 
-When `GEMINI_API_KEY` is missing, `/ai/decorate` returns `mock: true` with a clear message (no fake design image).
+When `OPENROUTER_API_KEY` is missing, `/ai/decorate` returns `mock: true` with a clear message (no fake design image).

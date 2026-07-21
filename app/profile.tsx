@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useSyncExternalStore } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BottomNav } from '../components/ui/BottomNav';
+import { BottomNavSpacer } from '../components/ui/BottomNav';
 import { GlassCard, GlassToggleRow } from '../components/ui/Glass';
 import { Radii, Type } from '../constants/theme';
 import { Role, session } from '../lib/session';
@@ -127,11 +127,14 @@ export default function Profile() {
           <Row label="Help & Support" onPress={() => router.push('/notification')} chevron />
           <Row
             label="Log Out" danger chevron last
-            onPress={() => { session.set(null); router.replace('/onboarding'); }}
+            onPress={async () => {
+              await session.set(null);
+              router.replace('/onboarding');
+            }}
           />
         </GlassCard>
       </ScrollView>
-      <BottomNav />
+      <BottomNavSpacer />
     </SafeAreaView>
   );
 }

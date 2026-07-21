@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BottomNav } from '../components/ui/BottomNav';
+import { BottomNavSpacer } from '../components/ui/BottomNav';
 import { Button } from '../components/ui/Button';
 import { GlassCard } from '../components/ui/Glass';
 import { EmptyState } from '../components/ui/ScreenHeader';
@@ -176,7 +176,7 @@ export default function Admin() {
           </Animated.View>
         ))}
       </ScrollView>
-      <BottomNav />
+      <BottomNavSpacer />
     </SafeAreaView>
   );
 }

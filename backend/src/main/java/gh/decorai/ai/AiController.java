@@ -29,13 +29,26 @@ public class AiController {
   Map<String, Object> decorate(@RequestBody Map<String, Object> body) {
     String photo = str(body, "photoBase64");
     if (photo.isBlank()) photo = str(body, "photoB64");
-    return decorate.decorate(
+    System.out.println(
+        "[ai] POST /ai/decorate photoChars=" + photo.length()
+            + " event=" + str(body, "eventType")
+            + " style=" + str(body, "style")
+            + " mime=" + str(body, "mime")
+    );
+    Map<String, Object> result = decorate.decorate(
         photo,
         str(body, "eventType"),
         str(body, "style"),
         str(body, "vision"),
         str(body, "mime")
     );
+    System.out.println(
+        "[ai] /ai/decorate done ok=" + result.get("ok")
+            + " mock=" + result.get("mock")
+            + " image=" + (result.get("imageBase64") != null)
+            + " model=" + result.get("imageModel")
+    );
+    return result;
   }
 
   private static String str(Map<String, Object> body, String key) {

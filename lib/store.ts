@@ -5,8 +5,15 @@ import { useSyncExternalStore } from 'react';
 import type { GenerationResult } from './ai';
 
 export type SavedDesign = {
-  id: string; imageBase64: string; items: string[]; eventType: string; style: string;
-  vision: string; createdAt: string;
+  id: string;
+  imageBase64: string;
+  items: string[];
+  eventType: string;
+  style: string;
+  vision: string;
+  createdAt: string;
+  /** Original room photo when available — used to re-open edit / regenerate. */
+  photoB64?: string;
 };
 
 type State = {
@@ -84,11 +91,43 @@ export const actions = {
   },
   setBrief(brief: State['brief']) { state = { ...state, brief, variants: [] }; emit(); },
   addVariant(v: GenerationResult) { state = { ...state, variants: [...state.variants, v] }; emit(); },
+  /** Load a saved design into the result screen without regenerating. */
+  openSavedForEdit(d: SavedDesign) {
+    const photoB64 = d.photoB64 || d.imageBase64;
+    const variant: GenerationResult = {
+      imageBase64: d.imageBase64,
+      items: Array.isArray(d.items) ? d.items : [],
+      analysis: {
+        roomType: 'space',
+        structures: [],
+        placementZones: [],
+        lighting: '',
+        existingPalette: [],
+      },
+      attempts: 1,
+    };
+    state = {
+      ...state,
+      brief: {
+        eventType: d.eventType || 'Home Interior',
+        style: d.style || 'Modern',
+        vision: d.vision || '',
+        photoB64,
+      },
+      variants: [variant],
+    };
+    emit();
+  },
   saveDesign(d: SavedDesign) {
     // de-dupe by identical image payload if already saved
     const exists = state.saved.some((s) => s.imageBase64 === d.imageBase64);
     if (exists) return;
-    state = { ...state, saved: [d, ...state.saved] };
+    // Prefer explicit photoB64; fall back to current brief original photo
+    const withPhoto: SavedDesign = {
+      ...d,
+      photoB64: d.photoB64 || state.brief?.photoB64,
+    };
+    state = { ...state, saved: [withPhoto, ...state.saved] };
     emit();
     void persist();
   },

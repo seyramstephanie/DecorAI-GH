@@ -57,7 +57,7 @@ export default function Pro() {
       const init = await api.post<BillingInit>('/billing/initialize', { userId: user.id });
       if (init.mock || init.authorizationUrl.startsWith('decorai://') || init.authorizationUrl.startsWith('decoraigh://')) {
         const updated = await api.post<User>('/billing/verify', { reference: init.reference });
-        session.set(updated);
+        await session.set(updated);
         Alert.alert('Pro activated', 'You are on DecorAI GH Pro for 30 days. Decorate with AI is unlocked.');
         return;
       }
@@ -69,7 +69,7 @@ export default function Pro() {
       // Always verify after the browser closes (callback also verifies on the server)
       try {
         const updated = await api.post<User>('/billing/verify', { reference: init.reference });
-        session.set(updated);
+        await session.set(updated);
         Alert.alert(
           "You're on Pro!",
           'Payment successful. Decorate with AI is unlocked for 30 days.',
@@ -81,7 +81,7 @@ export default function Pro() {
             `/billing/status?userId=${encodeURIComponent(user.id)}`,
           );
           if (status.isPro || status.canUseAi || status.plan === 'pro') {
-            session.set({
+            await session.set({
               ...user,
               plan: (status.plan as User['plan']) || 'pro',
               planExpiresAt: status.planExpiresAt,
@@ -120,7 +120,7 @@ export default function Pro() {
         `/billing/status?userId=${encodeURIComponent(user.id)}`,
       );
       if (status.isPro || status.canUseAi || status.plan === 'pro') {
-        session.set({
+        await session.set({
           ...user,
           plan: (status.plan as User['plan']) || 'pro',
           planExpiresAt: status.planExpiresAt,

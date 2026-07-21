@@ -60,10 +60,10 @@ export default function AccountSettings() {
         Object.entries({ name, email, phone, location, password }).filter(([, v]) => v.trim()),
       );
       const updated = await api.patch<typeof user>(`/users/${user.id}`, fields).catch(() => null);
-      if (updated) session.set({ ...user, ...updated, password: undefined } as any);
+      if (updated) await session.set({ ...user, ...updated, password: undefined } as any);
       else {
         const { password: _pw, ...profile } = fields as any;
-        session.set({ ...user, ...profile });
+        await session.set({ ...user, ...profile });
       }
 
       if (user.role === 'decorator' && decoratorId) {

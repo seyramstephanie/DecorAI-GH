@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BottomNavSpacer } from '../components/ui/BottomNav';
 import { GlassCard } from '../components/ui/Glass';
 import { EmptyState, ScreenHeader } from '../components/ui/ScreenHeader';
 import { SkeletonList } from '../components/ui/Skeleton';
@@ -80,6 +81,7 @@ export default function Notifications() {
           </Animated.View>
         ))}
       </ScrollView>
+      <BottomNavSpacer />
     </SafeAreaView>
   );
 }

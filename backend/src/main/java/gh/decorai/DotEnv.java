@@ -11,6 +11,8 @@ import java.util.Map;
  * project root or backend/.
  */
 public final class DotEnv {
+  private static volatile Map<String, String> cached;
+
   private DotEnv() {}
 
   /** Call once before SpringApplication.run. Does not overwrite real OS env vars. */
@@ -54,6 +56,9 @@ public final class DotEnv {
   }
 
   static Map<String, String> readAll() {
+    Map<String, String> hit = cached;
+    if (hit != null) return hit;
+
     Map<String, String> out = new LinkedHashMap<>();
     for (Path candidate : candidates()) {
       if (!Files.isRegularFile(candidate)) continue;
@@ -79,6 +84,7 @@ public final class DotEnv {
         System.err.println("[env] Could not read " + candidate + ": " + e.getMessage());
       }
     }
+    cached = out;
     return out;
   }
 

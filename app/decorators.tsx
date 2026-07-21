@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BottomNavSpacer } from '../components/ui/BottomNav';
 import { Pill } from '../components/ui/Chip';
 import { EmptyState, ScreenHeader } from '../components/ui/ScreenHeader';
 import { Radii, Shadow, Type } from '../constants/theme';
@@ -98,6 +99,7 @@ export default function Decorators() {
           </Animated.View>
         ))}
       </ScrollView>
+      <BottomNavSpacer />
     </SafeAreaView>
   );
 }

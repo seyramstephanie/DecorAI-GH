@@ -34,6 +34,26 @@ const TABS_BY_ROLE = {
   ],
 } as const;
 
+/** Icon bar height (48) + vertical padding (10+10). */
+const BAR_HEIGHT = 68;
+const WRAP_TOP = 4;
+
+function useBottomNavHeight() {
+  const insets = useSafeAreaInsets();
+  return WRAP_TOP + BAR_HEIGHT + Math.max(insets.bottom - 4, 6);
+}
+
+/** Invisible spacer so page content clears the fixed bottom nav (only when nav is visible). */
+export function BottomNavSpacer() {
+  const pathname = usePathname();
+  const user = useSyncExternalStore(session.subscribe, () => session.user);
+  const tabs = TABS_BY_ROLE[user?.role ?? 'client'];
+  const isTabRoute = tabs.some((tab) => tab.route === pathname);
+  const height = useBottomNavHeight();
+  if (!isTabRoute) return null;
+  return <View style={{ height }} pointerEvents="none" />;
+}
+
 export function BottomNav() {
   const router = useRouter();
   const pathname = usePathname();
@@ -42,9 +62,16 @@ export function BottomNav() {
   const styles = useMemo(() => makeStyles(C), [C]);
   const user = useSyncExternalStore(session.subscribe, () => session.user);
   const tabs = TABS_BY_ROLE[user?.role ?? 'client'];
+  const isTabRoute = tabs.some((tab) => tab.route === pathname);
+
+  // Fixed outside the stack so it never slides with page transitions.
+  if (!isTabRoute) return null;
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom - 4, 6) }]}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.wrap, { paddingBottom: Math.max(insets.bottom - 4, 6) }]}
+    >
       <Glass isInteractive glassEffectStyle="regular" style={styles.bar}>
         {tabs.map((tab) => {
           const active = pathname === tab.route;
@@ -68,7 +95,16 @@ export function BottomNav() {
 }
 
 const makeStyles = (C: Palette) => StyleSheet.create({
-  wrap: { paddingHorizontal: 12, paddingTop: 4 },
+  wrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 100,
+    elevation: 100,
+    paddingHorizontal: 12,
+    paddingTop: WRAP_TOP,
+  },
   bar: {
     flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',
     paddingTop: 10, paddingBottom: 10, paddingHorizontal: 12,

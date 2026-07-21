@@ -3,7 +3,7 @@ import { Image } from 'expo-image';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BottomNav } from '../components/ui/BottomNav';
+import { BottomNavSpacer } from '../components/ui/BottomNav';
 import { Pill } from '../components/ui/Chip';
 import { EmptyState } from '../components/ui/ScreenHeader';
 import { Radii, Shadow, Type } from '../constants/theme';
@@ -102,7 +102,7 @@ export default function ShopDashboard() {
           </>
         )}
       </ScrollView>
-      <BottomNav />
+      <BottomNavSpacer />
     </SafeAreaView>
   );
 }
